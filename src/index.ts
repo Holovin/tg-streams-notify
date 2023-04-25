@@ -114,8 +114,9 @@ function postProcess(db: OnlineStream[], online: OnlineStream[]): string[] {
 }
 
 function getStatus(stream: OnlineStream, isStarted: boolean): string {
-    return `${isStarted ? '🟢' : '⚪️'} [${stream.name}](https://twitch.tv/${stream.name}) ` +
-           `\\[${stream.game}\\] ${stream.title} \\(${stream.duration}\\)`;
+    return `${stream.name} ${isStarted ? 'is' : 'was'} live for ${stream.duration} ${isStarted ? '🔴' : '⚪️'}\n` +
+           `*${stream.title}*\n\n` +
+            `[Open stream on Twitch ↗](https://twitch.tv/${stream.name})`;
 }
 
 async function sendNotifications(bot, chatId, notifications: string[]) {
@@ -123,12 +124,16 @@ async function sendNotifications(bot, chatId, notifications: string[]) {
         return;
     }
 
-    log(`sendNotifications`,`send: ${chatId}, ${notifications.join('\n\n')}`);
-    await bot.api.sendMessage(
-        chatId,
-        notifications.join('\n\n'),
-        { parse_mode: 'MarkdownV2', disable_web_page_preview: true },
-    );
+    for (const notification of notifications) {
+        await bot.api.sendMessage(
+            chatId,
+            notification,
+            { parse_mode: 'MarkdownV2', disable_web_page_preview: true },
+        );
+        log(`sendNotifications`,`send: ${chatId}, ${notification}`);
+
+        await sleep(5);
+    }
 }
 
 

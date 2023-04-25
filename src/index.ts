@@ -3,6 +3,7 @@ import nconf from 'nconf';
 import TwitchApi from 'node-twitch';
 import intervalToDuration from 'date-fns/intervalToDuration';
 import { log, sleep, escapeMarkdown } from './helpers';
+import axios from 'axios';
 
 
 interface OnlineStream {
@@ -15,7 +16,9 @@ interface OnlineStream {
 
 const config = nconf.env().file({ file: 'config.json' });
 const channels = config.get('twitch:channels');
-const chatId = +config.get('id:admin');
+const chatId = +config.get('id:chat');
+const adminId = +config.get('id:admin');
+const heartbeatUrl = config.get('heartbeat');
 const timeout = config.get('twitch:timeout');
 const twitch = new TwitchApi({
     client_id: config.get('twitch:id'),
@@ -28,8 +31,10 @@ const bot = new Bot(config.get('telegram:token'));
 log(`main`,
     `\nStarted, settings:\n` +
     `- channels: ${JSON.stringify(channels)}\n` +
-    `- chatId: ${JSON.stringify(chatId)}\n` +
-    `- timeout: ${JSON.stringify(timeout)}\n`
+    `- chatId: ${chatId}\n` +
+    `- adminId: ${adminId}\n` +
+    `- timeout: ${timeout}\n` +
+    `- heartbeat: ${heartbeatUrl}\n`
 );
 
 async function pullStreamers(twitch, channels) {
@@ -136,11 +141,16 @@ async function task(db: OnlineStream[]): Promise<void> {
 async function tick() {
     const db: OnlineStream[] = [];
 
+    await sendNotifications(bot, adminId, ['Running']);
+
     while (true) {
-        log( `tick`, `Task started (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
+        log( `tick`, `heartbeat...`);
+        await axios.get(heartbeatUrl);
+
+        log( `tick`, `task started (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
         await task(db);
 
-        log( `tick`, `Task end (${new Date()})\n, db: ${db.length} / ${JSON.stringify(db)}`);
+        log( `tick`, `task end (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
         await sleep(timeout);
     }
 }

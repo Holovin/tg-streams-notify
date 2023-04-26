@@ -7,7 +7,8 @@ import axios from 'axios';
 
 type Channel = {
     name: string;
-    photoIntro?: string;
+    photoLive?: string;
+    photoOff?: string;
 }
 
 type Channels = {
@@ -24,11 +25,11 @@ type OnlineStream = {
 
 type Notification = {
     message: string;
-    photoIntro?: string;
+    photo?: string;
 }
 
 const config = nconf.env().file({ file: 'config.json' });
-const env = config.get('env');
+const env = config.get('stand');
 const channels = config.get('twitch:channels') as Channels;
 const channelNames = Object.keys(channels).filter(name => name !== '_');
 const chatId = +config.get('id:chat');
@@ -104,7 +105,7 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
         if (!streamDb) {
             notifications.push({
                 message: getStatus(onlineStream, true),
-                photoIntro: channels[onlineStream.name.replace('\\', '')]?.photoIntro,
+                photo: channels[onlineStream.name.replace('\\', '')]?.photoLive,
             });
             db.push(onlineStream);
             log(`postProcess`, `new stream ${onlineStream.name}`);
@@ -114,8 +115,11 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
         else {
             log(`postProcess`, `update ${onlineStream.name} stream`);
             const oldStream = db[index];
-            if (oldStream.hours != oldStream.hours) {
-                // TODO: add notification
+            if (onlineStream.hours != oldStream.hours || onlineStream.title != oldStream.title) {
+                notifications.push({
+                    message: getStatus(onlineStream, true),
+                    photo: channels[onlineStream.name.replace('\\', '')]?.photoLive,
+                });
             }
 
             db[index] = onlineStream;
@@ -133,6 +137,7 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
         log(`postProcess`, `stream is dead: ${stream.name}`);
         notifications.push({
             message: getStatus(stream, false),
+            photo: channels[stream.name.replace('\\', '')]?.photoOff,
         });
 
         db.splice(i);
@@ -154,10 +159,10 @@ async function sendNotifications(bot, chatId, notifications: Notification[]) {
     }
 
     for (const notification of notifications) {
-        if (notification.photoIntro) {
+        if (notification.photo) {
             await bot.api.sendPhoto(
                 chatId,
-                notification.photoIntro,
+                notification.photo,
                 {
                     caption: notification.message,
                     ...tgBaseOptions,

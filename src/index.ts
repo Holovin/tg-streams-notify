@@ -5,8 +5,16 @@ import intervalToDuration from 'date-fns/intervalToDuration';
 import { log, sleep, escapeMarkdown } from './helpers';
 import axios from 'axios';
 
+type Channel = {
+    name: string;
+    photoIntro?: string;
+}
 
-interface OnlineStream {
+type Channels = {
+    [key: string]: Channel;
+}
+
+type OnlineStream = {
     title: string;
     name: string;
     game: string;
@@ -14,8 +22,15 @@ interface OnlineStream {
     hours: number;
 }
 
+type Notification = {
+    message: string;
+    photoIntro?: string;
+}
+
 const config = nconf.env().file({ file: 'config.json' });
-const channels = config.get('twitch:channels');
+const env = config.get('env');
+const channels = config.get('twitch:channels') as Channels;
+const channelNames = Object.keys(channels).filter(name => name !== '_');
 const chatId = +config.get('id:chat');
 const adminId = +config.get('id:admin');
 const heartbeatUrl = config.get('heartbeat');
@@ -26,6 +41,10 @@ const twitch = new TwitchApi({
 });
 
 const bot = new Bot(config.get('telegram:token'));
+const tgBaseOptions = {
+    parse_mode: 'MarkdownV2',
+    disable_web_page_preview: true,
+};
 
 
 log(`main`,
@@ -37,10 +56,15 @@ log(`main`,
     `- heartbeat: ${heartbeatUrl}\n`
 );
 
-async function pullStreamers(twitch, channels) {
+async function pullStreamers(twitch, channelNames) {
     const online: OnlineStream[] = [];
-    const response = await twitch.getStreams({ channels: channels });
+    const response = await twitch.getStreams({ channels: channelNames });
     log(`pullStreamers`, `response: ${JSON.stringify(response)}`);
+
+    if (!response.data) {
+        log(`pullStreamers`, `Empty response??`);
+        return null;
+    }
 
     response.data.forEach(streamInfo => {
         if (streamInfo.type !== 'live') {
@@ -69,8 +93,8 @@ async function pullStreamers(twitch, channels) {
     return online;
 }
 
-function postProcess(db: OnlineStream[], online: OnlineStream[]): string[] {
-    const notifications: string[] = [];
+function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Channels): Notification[] {
+    const notifications: Notification[] = [];
 
     // Check event: Start stream
     online.forEach((onlineStream, index) => {
@@ -78,7 +102,10 @@ function postProcess(db: OnlineStream[], online: OnlineStream[]): string[] {
 
         // No in DB, need notification
         if (!streamDb) {
-            notifications.push(getStatus(onlineStream, true));
+            notifications.push({
+                message: getStatus(onlineStream, true),
+                photoIntro: channels[onlineStream.name.replace('\\', '')]?.photoIntro,
+            });
             db.push(onlineStream);
             log(`postProcess`, `new stream ${onlineStream.name}`);
 
@@ -104,7 +131,9 @@ function postProcess(db: OnlineStream[], online: OnlineStream[]): string[] {
         }
 
         log(`postProcess`, `stream is dead: ${stream.name}`);
-        notifications.push(getStatus(stream, false));
+        notifications.push({
+            message: getStatus(stream, false),
+        });
 
         db.splice(i);
     }
@@ -114,39 +143,57 @@ function postProcess(db: OnlineStream[], online: OnlineStream[]): string[] {
 }
 
 function getStatus(stream: OnlineStream, isStarted: boolean): string {
-    return `${stream.name} ${isStarted ? 'is' : 'was'} live for ${stream.duration} ${isStarted ? '🔴' : '⚪️'}\n` +
+    return `${stream.name} ${isStarted ? 'is' : 'was'} live for _${stream.duration}_ ${isStarted ? '🔴' : '⚪️'}\n` +
            `*${stream.title}*\n\n` +
             `[Open stream on Twitch ↗](https://twitch.tv/${stream.name})`;
 }
 
-async function sendNotifications(bot, chatId, notifications: string[]) {
+async function sendNotifications(bot, chatId, notifications: Notification[]) {
     if (notifications.length === 0) {
         return;
     }
 
     for (const notification of notifications) {
-        await bot.api.sendMessage(
-            chatId,
-            notification,
-            { parse_mode: 'MarkdownV2', disable_web_page_preview: true },
-        );
-        log(`sendNotifications`,`send: ${chatId}, ${notification}`);
+        if (notification.photoIntro) {
+            await bot.api.sendPhoto(
+                chatId,
+                notification.photoIntro,
+                {
+                    caption: notification.message,
+                    ...tgBaseOptions,
+                },
+            );
 
+        } else {
+            await bot.api.sendMessage(
+                chatId,
+                notification.message,
+                { ...tgBaseOptions },
+            );
+        }
+
+        log(`sendNotifications`,`send: ${chatId}, ${notification.message}`);
         await sleep(5);
     }
 }
 
 
 async function task(db: OnlineStream[]): Promise<void> {
-    const online = await pullStreamers(twitch, channels);
-    const notifications = postProcess(db, online);
+    const online = await pullStreamers(twitch, channelNames);
+    if (online === null) {
+        return;
+    }
+
+    const notifications = postProcess(db, online, channels);
     await sendNotifications(bot, chatId, notifications);
 }
 
 async function tick() {
     const db: OnlineStream[] = [];
 
-    await sendNotifications(bot, adminId, ['Running']);
+    await sendNotifications(bot, adminId, [{
+        message: `Running \\(${env}\\)\\.\\.\\.`,
+    }]);
 
     while (true) {
         log( `tick`, `heartbeat...`);

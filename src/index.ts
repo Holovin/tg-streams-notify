@@ -2,38 +2,23 @@ import { Bot } from 'grammy';
 import nconf from 'nconf';
 import TwitchApi from 'node-twitch';
 import intervalToDuration from 'date-fns/intervalToDuration';
-import { log, sleep, escapeMarkdown } from './helpers';
+import { escapeMarkdown, log, sleep } from './helpers';
 import axios from 'axios';
+import { Channels, EventType, Notification, OnlineStream } from './types';
 
-type Channel = {
-    name: string;
-    photoLive?: string;
-    photoOff?: string;
-}
-
-type Channels = {
-    [key: string]: Channel;
-}
-
-type OnlineStream = {
-    title: string;
-    name: string;
-    game: string;
-    duration: string;
-    hours: number;
-}
-
-type Notification = {
-    message: string;
-    photo?: string;
-}
 
 const config = nconf.env().file({ file: 'config.json' });
 const env = config.get('stand');
-const channels = config.get('twitch:channels') as Channels;
+const channels = Object.fromEntries(
+    Object.entries(
+        config.get('twitch:channels') as Channels
+    ).map(
+        ([k, v], i) => [k.toLowerCase(), v]
+    )
+);
 const channelNames = Object.keys(channels).filter(name => name !== '_');
-const chatId = +config.get('id:chat');
-const adminId = +config.get('id:admin');
+const chatId = +config.get('telegram:chat');
+const adminId = +config.get('telegram:admin');
 const heartbeatUrl = config.get('heartbeat');
 const timeout = config.get('twitch:timeout');
 const twitch = new TwitchApi({
@@ -105,7 +90,7 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
         if (!streamDb) {
             notifications.push({
                 message: getStatus(onlineStream, true),
-                photo: channels[onlineStream.name.replace('\\', '')]?.photoLive,
+                photo: getChannelPhoto(onlineStream, EventType.live),
             });
             db.push(onlineStream);
             log(`postProcess`, `new stream ${onlineStream.name}`);
@@ -115,10 +100,10 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
         else {
             log(`postProcess`, `update ${onlineStream.name} stream`);
             const oldStream = db[index];
-            if (onlineStream.hours != oldStream.hours || onlineStream.title != oldStream.title) {
+            if (onlineStream.title != oldStream.title) {
                 notifications.push({
                     message: getStatus(onlineStream, true),
-                    photo: channels[onlineStream.name.replace('\\', '')]?.photoLive,
+                    photo: getChannelPhoto(onlineStream, EventType.live),
                 });
             }
 
@@ -137,7 +122,7 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
         log(`postProcess`, `stream is dead: ${stream.name}`);
         notifications.push({
             message: getStatus(stream, false),
-            photo: channels[stream.name.replace('\\', '')]?.photoOff,
+            photo: getChannelPhoto(stream, EventType.off),
         });
 
         db.splice(i);
@@ -149,8 +134,18 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
 
 function getStatus(stream: OnlineStream, isStarted: boolean): string {
     return `${stream.name} ${isStarted ? 'is' : 'was'} live for _${stream.duration}_ ${isStarted ? '🔴' : '⚪️'}\n` +
-           `*${stream.title}*\n\n` +
-            `[Open stream on Twitch ↗](https://twitch.tv/${stream.name})`;
+        `*${stream.title}*\n\n` +
+        `[Open stream on Twitch ↗](https://twitch.tv/${stream.name})`;
+}
+
+const photoMap = {
+    [EventType.off]: 'photoOff',
+    [EventType.live]: 'photoLive',
+}
+
+function getChannelPhoto(onlineStream: OnlineStream, eventType: EventType): string {
+    return channels[onlineStream.name.toLowerCase().replace('\\', '')]?.[photoMap[eventType]]
+        ?? channels['_'][photoMap[eventType]];
 }
 
 async function sendNotifications(bot, chatId, notifications: Notification[]) {
@@ -201,8 +196,10 @@ async function tick() {
     }]);
 
     while (true) {
-        log( `tick`, `heartbeat...`);
-        await axios.get(heartbeatUrl);
+        if (heartbeatUrl) {
+            log( `tick`, `heartbeat...`);
+            await axios.get(heartbeatUrl);
+        }
 
         log( `tick`, `task started (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
         await task(db);

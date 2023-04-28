@@ -51,6 +51,9 @@ Example of config, values:
 3. `pm2 start ecosystem.config.js` (see: https://pm2.keymetrics.io/docs/usage/quick-start)
 
 ## Version history
+##### v8
+- fixed bug with wrong index in array when 2 events occur at same time
+
 ##### v7
 - [config format changes]
 - README added

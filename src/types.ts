@@ -19,6 +19,7 @@ export type OnlineStream = {
 export type Notification = {
     message: string;
     photo?: string;
+    trigger?: string;
 }
 
 export enum EventType {

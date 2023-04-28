@@ -83,7 +83,7 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
     const notifications: Notification[] = [];
 
     // Check event: Start stream
-    online.forEach((onlineStream, index) => {
+    online.forEach((onlineStream) => {
         const streamDb = db.find(item => item.name === onlineStream.name);
 
         // No in DB, need notification
@@ -91,23 +91,33 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
             notifications.push({
                 message: getStatus(onlineStream, true),
                 photo: getChannelPhoto(onlineStream, EventType.live),
+                trigger: `new stream ${onlineStream.name}, db dump: ${JSON.stringify(db)}`,
             });
+            log(`postProcess`, `notify ${onlineStream.name} (new)`);
             db.push(onlineStream);
-            log(`postProcess`, `new stream ${onlineStream.name}`);
 
         }
         // Exist in DB, update timers
         else {
             log(`postProcess`, `update ${onlineStream.name} stream`);
+            // FIXME: temporary solution, we can't use index from forEach because we can mutate array above
+            const index = db.findIndex(item => item.name === onlineStream.name);
+            if (index === -1) {
+                log(`postProcess`, `[WARN] can't find ${JSON.stringify(onlineStream)}`);
+                return;
+            }
+
             const oldStream = db[index];
-            if (onlineStream.title != oldStream.title) {
+            if (onlineStream.title !== oldStream.title) {
+                log(`postProcess`, `notify ${onlineStream.name} (title), db index: ${index}`);
                 notifications.push({
                     message: getStatus(onlineStream, true),
                     photo: getChannelPhoto(onlineStream, EventType.live),
+                    trigger: `title update: ${onlineStream.title} !== ${oldStream.title}`,
                 });
             }
 
-            db[index] = onlineStream;
+            db[index] = { ...onlineStream };
         }
     });
 
@@ -123,6 +133,7 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
         notifications.push({
             message: getStatus(stream, false),
             photo: getChannelPhoto(stream, EventType.off),
+            trigger: `notify ${stream.name} (dead)`,
         });
 
         db.splice(i);

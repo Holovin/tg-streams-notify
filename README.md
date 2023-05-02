@@ -44,13 +44,16 @@ Example of config, values:
 | `telegram:token`                  | bot token from @BotFather                                                                                                                                                                                                                                                                                                                                                                           |
 | `twitch:id` <br/> `twitch:secret` | from https://dev.twitch.tv/console/apps/create                                                                                                                                                                                                                                                                                                                                                      |
 | `twitch:channels`                 | list of channels (max 100), key = twitch name (like demouser = twitch.tv/demouser). `photoLive` and `photoOff` properties are telegram `file_id` (see: https://core.telegram.org/bots/api#sending-files). If these properties specified bot will send this photo with start/end stream message. Key `"_"` is reserved (see example above) and used as fallback if user don't have these properties. |
-| `timeout`                         | minimal amount of seconds between twitch API calls                                                                                                                                                                                                                                                                                                                                                  |
+| `twitch:timeout`                  | minimal amount of seconds between twitch API calls                                                                                                                                                                                                                                                                                                                                                  |
 | `heartbeat`                       | [optional] url for healthcheck (app will HTTP/GET this url every check iteration (~timeout)                                                                                                                                                                                                                                                                                                         |
 
 2. `npm install`
 3. `pm2 start ecosystem.config.js` (see: https://pm2.keymetrics.io/docs/usage/quick-start)
 
 ## Version history
+##### v9
+- fix readme
+
 ##### v8
 - fixed bug with wrong index in array when 2 events occur at same time
 

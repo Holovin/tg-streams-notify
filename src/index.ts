@@ -79,11 +79,15 @@ async function pullStreamers(twitch, channelNames) {
     return online;
 }
 
-function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Channels): Notification[] {
+function postProcess(db: OnlineStream[], online: OnlineStream[]): {
+    notifications: Notification[],
+    db: OnlineStream[],
+} {
     const notifications: Notification[] = [];
+    const newDb: OnlineStream[] = [];
 
     // Check event: Start stream
-    online.forEach((onlineStream) => {
+    online.forEach((onlineStream, index) => {
         const streamDb = db.find(item => item.name === onlineStream.name);
 
         // No in DB, need notification
@@ -94,30 +98,22 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
                 trigger: `new stream ${onlineStream.name}, db dump: ${JSON.stringify(db)}`,
             });
             log(`postProcess`, `notify ${onlineStream.name} (new)`);
-            db.push(onlineStream);
 
+            newDb.push(onlineStream);
         }
         // Exist in DB, update timers
         else {
             log(`postProcess`, `update ${onlineStream.name} stream`);
-            // FIXME: temporary solution, we can't use index from forEach because we can mutate array above
-            const index = db.findIndex(item => item.name === onlineStream.name);
-            if (index === -1) {
-                log(`postProcess`, `[WARN] can't find ${JSON.stringify(onlineStream)}`);
-                return;
-            }
-
-            const oldStream = db[index];
-            if (onlineStream.title !== oldStream.title) {
+            if (onlineStream.title !== streamDb.title) {
                 log(`postProcess`, `notify ${onlineStream.name} (title), db index: ${index}`);
                 notifications.push({
                     message: getStatus(onlineStream, true),
                     photo: getChannelPhoto(onlineStream, EventType.live),
-                    trigger: `title update: ${onlineStream.title} !== ${oldStream.title}`,
+                    trigger: `title update: ${onlineStream.title} !== ${streamDb.title}`,
                 });
             }
 
-            db[index] = { ...onlineStream };
+            newDb.push(onlineStream);
         }
     });
 
@@ -135,12 +131,13 @@ function postProcess(db: OnlineStream[], online: OnlineStream[], channels: Chann
             photo: getChannelPhoto(stream, EventType.off),
             trigger: `notify ${stream.name} (dead)`,
         });
-
-        db.splice(i);
     }
 
     log(`postProcess`, `return: ${JSON.stringify(notifications)}`);
-    return notifications;
+    return {
+        notifications: notifications,
+        db: newDb
+    };
 }
 
 function getStatus(stream: OnlineStream, isStarted: boolean): string {
@@ -189,18 +186,20 @@ async function sendNotifications(bot, chatId, notifications: Notification[]) {
 }
 
 
-async function task(db: OnlineStream[]): Promise<void> {
+async function task(db: OnlineStream[]): Promise<OnlineStream[]> {
     const online = await pullStreamers(twitch, channelNames);
     if (online === null) {
-        return;
+        return db;
     }
 
-    const notifications = postProcess(db, online, channels);
-    await sendNotifications(bot, chatId, notifications);
+    const data = postProcess(db, online);
+    await sendNotifications(bot, chatId, data.notifications);
+
+    return data.db;
 }
 
 async function tick() {
-    const db: OnlineStream[] = [];
+    let db: OnlineStream[] = [];
 
     await sendNotifications(bot, adminId, [{
         message: `Running \\(${env}\\)\\.\\.\\.`,
@@ -213,7 +212,7 @@ async function tick() {
         }
 
         log( `tick`, `task started (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
-        await task(db);
+        db = await task(db);
 
         log( `tick`, `task end (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
         await sleep(timeout);

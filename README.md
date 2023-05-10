@@ -51,6 +51,10 @@ Example of config, values:
 3. `pm2 start ecosystem.config.js` (see: https://pm2.keymetrics.io/docs/usage/quick-start)
 
 ## Version history
+##### v10
+- logging to file and tg
+- update notification text formatting
+
 ##### v9
 - fix readme
 

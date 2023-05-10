@@ -2,9 +2,10 @@ import { Bot } from 'grammy';
 import nconf from 'nconf';
 import TwitchApi from 'node-twitch';
 import intervalToDuration from 'date-fns/intervalToDuration';
-import { escapeMarkdown, log, sleep } from './helpers';
+import { escapeMarkdown, sleep } from './helpers';
 import axios from 'axios';
 import { Channels, EventType, Notification, OnlineStream } from './types';
+import { createLoggerWrap } from './logger';
 
 
 const config = nconf.env().file({ file: 'config.json' });
@@ -21,21 +22,24 @@ const chatId = +config.get('telegram:chat');
 const adminId = +config.get('telegram:admin');
 const heartbeatUrl = config.get('heartbeat');
 const timeout = config.get('twitch:timeout');
+const telegramToken = config.get('telegram:token');
+
 const twitch = new TwitchApi({
     client_id: config.get('twitch:id'),
     client_secret: config.get('twitch:secret')
 });
 
-const bot = new Bot(config.get('telegram:token'));
+const bot = new Bot(telegramToken);
+const logger = createLoggerWrap(telegramToken, adminId)
 const tgBaseOptions = {
     parse_mode: 'MarkdownV2',
     disable_web_page_preview: true,
 };
 
 
-log(`main`,
+logger.info(`== SQD StreamNotify config ==` +
     `\nStarted, settings:\n` +
-    `- channels: ${JSON.stringify(channels)}\n` +
+    `- channels: ${JSON.stringify(channelNames)}\n` +
     `- chatId: ${chatId}\n` +
     `- adminId: ${adminId}\n` +
     `- timeout: ${timeout}\n` +
@@ -45,10 +49,10 @@ log(`main`,
 async function pullStreamers(twitch, channelNames) {
     const online: OnlineStream[] = [];
     const response = await twitch.getStreams({ channels: channelNames });
-    log(`pullStreamers`, `response: ${JSON.stringify(response)}`);
+    logger.debug(`pullStreamers: response: ${JSON.stringify(response)}`);
 
     if (!response.data) {
-        log(`pullStreamers`, `Empty response??`);
+        logger.warn(`pullStreamers: empty response??`);
         return null;
     }
 
@@ -72,10 +76,10 @@ async function pullStreamers(twitch, channelNames) {
         };
         online.push(stream);
 
-        log(`pullStreamers`, `live: ${stream.name}`);
+        logger.debug(`pullStreamers: live -- ${stream.name}`);
     });
 
-    log(`pullStreamers`, `return: ${JSON.stringify(online)}`);
+    logger.debug(`pullStreamers: return -- ${JSON.stringify(online)}`);
     return online;
 }
 
@@ -97,15 +101,15 @@ function postProcess(db: OnlineStream[], online: OnlineStream[]): {
                 photo: getChannelPhoto(onlineStream, EventType.live),
                 trigger: `new stream ${onlineStream.name}, db dump: ${JSON.stringify(db)}`,
             });
-            log(`postProcess`, `notify ${onlineStream.name} (new)`);
+            logger.info(`postProcess: notify ${onlineStream.name} (new)`);
 
             newDb.push(onlineStream);
         }
         // Exist in DB, update timers
         else {
-            log(`postProcess`, `update ${onlineStream.name} stream`);
+            logger.debug(`postProcess: update ${onlineStream.name} stream`);
             if (onlineStream.title !== streamDb.title) {
-                log(`postProcess`, `notify ${onlineStream.name} (title), db index: ${index}`);
+                logger.info(`postProcess: notify ${onlineStream.name} (title), db index: ${index}`);
                 notifications.push({
                     message: getStatus(onlineStream, true),
                     photo: getChannelPhoto(onlineStream, EventType.live),
@@ -125,7 +129,7 @@ function postProcess(db: OnlineStream[], online: OnlineStream[]): {
             continue;
         }
 
-        log(`postProcess`, `stream is dead: ${stream.name}`);
+        logger.info(`postProcess: stream is dead -- ${stream.name}`);
         notifications.push({
             message: getStatus(stream, false),
             photo: getChannelPhoto(stream, EventType.off),
@@ -133,7 +137,7 @@ function postProcess(db: OnlineStream[], online: OnlineStream[]): {
         });
     }
 
-    log(`postProcess`, `return: ${JSON.stringify(notifications)}`);
+    logger.debug(`postProcess: return -- ${JSON.stringify(notifications)}`);
     return {
         notifications: notifications,
         db: newDb
@@ -141,7 +145,8 @@ function postProcess(db: OnlineStream[], online: OnlineStream[]): {
 }
 
 function getStatus(stream: OnlineStream, isStarted: boolean): string {
-    return `${stream.name} ${isStarted ? 'is' : 'was'} live for _${stream.duration}_ ${isStarted ? '🔴' : '⚪️'}\n` +
+    const duration = stream.duration.startsWith('00:0') ? '' : `for _${stream.duration}_ `;
+    return `${stream.name} ${isStarted ? 'is' : 'was'} live ${duration}${isStarted ? '🔴' : '⚪️'}\n` +
         `*${stream.title}*\n\n` +
         `[Open stream on Twitch ↗](https://twitch.tv/${stream.name})`;
 }
@@ -180,7 +185,7 @@ async function sendNotifications(bot, chatId, notifications: Notification[]) {
             );
         }
 
-        log(`sendNotifications`,`send: ${chatId}, ${notification.message}`);
+        logger.info(`sendNotifications: send -- ${chatId}, ${notification.message}`);
         await sleep(5);
     }
 }
@@ -201,22 +206,26 @@ async function task(db: OnlineStream[]): Promise<OnlineStream[]> {
 async function tick() {
     let db: OnlineStream[] = [];
 
-    await sendNotifications(bot, adminId, [{
-        message: `Running \\(${env}\\)\\.\\.\\.`,
-    }]);
-
     while (true) {
         if (heartbeatUrl) {
-            log( `tick`, `heartbeat...`);
+            logger.debug( `tick: heartbeat...`);
             await axios.get(heartbeatUrl);
         }
 
-        log( `tick`, `task started (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
+        logger.debug( `tick: task started (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
         db = await task(db);
 
-        log( `tick`, `task end (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
+        logger.debug( `tick: task end (${new Date()}), db: ${db.length} / ${JSON.stringify(db)}`);
         await sleep(timeout);
     }
 }
 
-tick().then(() => {});
+try {
+    tick().then(() => {});
+} catch (e: unknown) {
+    logger.info(JSON.stringify(e));
+
+    if (e instanceof Error) {
+        logger.error(`GGWP: ${e.message}`);
+    }
+}

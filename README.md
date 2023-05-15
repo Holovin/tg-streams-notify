@@ -18,7 +18,8 @@ Telegram bot that can send notifications of current twitch streams to telegram c
     "channels": {
       "_": {
         "photoLive": "TG_PHOTO_ID_STRING",
-        "photoOff": "TG_PHOTO_ID_STRING"
+        "photoOff": "TG_PHOTO_ID_STRING",
+        "displayName": "Channel name from config"
       },
 
       "demo_user": {
@@ -51,6 +52,11 @@ Example of config, values:
 3. `pm2 start ecosystem.config.js` (see: https://pm2.keymetrics.io/docs/usage/quick-start)
 
 ## Version history
+##### v11
+- displayName new config property
+- ban check support
+- sqlite for store state
+
 ##### v10
 - logging to file and tg
 - update notification text formatting

@@ -11,14 +11,14 @@ export function createLoggerWrap(telegramBotToken: string, telegramChatId: numbe
             format.timestamp({ format: 'YYYY/MM/DD HH:mm:ss' }),
             loggerFormatter,
         ),
-        level: 'info',
         transports: [
+            new transports.Console({
+                level: 'debug',
+            }),
             new transports.File({
                 filename: 'info.log',
                 level: 'info',
             }),
-            // new transports.File({ filename: 'debug.log' }),
-            new transports.Console({ level: 'info' }),
             new WinstonTelegram({
                 token: telegramBotToken,
                 chatId: telegramChatId,

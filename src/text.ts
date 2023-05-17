@@ -7,6 +7,24 @@ export function getStatus(stream: OnlineStream, isStarted: boolean): string {
         `[Open stream on Twitch ↗](https://twitch.tv/${stream.name})`;
 }
 
+export function getShortStatus(streams: OnlineStream[]): string {
+    let message = ``;
+
+    if (!streams.length) {
+        message += `⚪ Everybody is offline`;
+        return message;
+    }
+
+    const usersString = streams.map(stream => stream.name).join(', ');
+    message += `🔴 ${streams.length} online\\: ${usersString}\n`;
+
+    streams.forEach(stream => {
+        message += `\n\*${stream.title}* [${stream.name} ↗](https://twitch.tv/${stream.name})`;
+    });
+
+    return message;
+}
+
 export function getChannelPhoto(channels: Channels, onlineStream: OnlineStream|null, eventType: EventType): string {
     if (onlineStream) {
         return channels[onlineStream.name.toLowerCase().replace('\\', '')]?.[photoMap[eventType]];

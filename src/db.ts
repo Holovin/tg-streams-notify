@@ -2,6 +2,12 @@ import Keyv from 'keyv';
 
 
 export const DB_USERS = 'users';
+export const DB_CHAT = 'chatid';
+
+export function getChatIdKey(chatId: number): string {
+    return `${DB_CHAT}_${chatId}`;
+}
+
 export default async function createDbConnection(logger, channelNames: string[]) {
     const keyv = new Keyv('sqlite://db.sqlite', {
         adapter: 'sqlite',

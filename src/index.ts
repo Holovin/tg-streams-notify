@@ -1,14 +1,15 @@
-import { Bot } from 'grammy';
+import { Bot, RawApi } from 'grammy';
 import nconf from 'nconf';
 import TwitchApi from 'node-twitch';
-import { getArrDiff, sleep } from './helpers';
+import { escapeMarkdown, getArrDiff, sleep } from './helpers';
 import axios from 'axios';
-import { Channels, EventType, Notification, OnlineStream, photoMap, USER_RESERVED } from './types';
+import { Channels, EventType, Notification, OnlineStream, USER_RESERVED } from './types';
 import { createLoggerWrap } from './logger';
-import createDbConnection, { DB_USERS } from './db';
+import createDbConnection, { DB_USERS, getChatIdKey } from './db';
 import { pullStreamers, pullUsers } from './twitch';
-import { sendNotifications } from './telegram';
-import { getChannelPhoto, getStatus } from './text';
+import { sendNotifications, tgBaseOptions, updatePin } from './telegram';
+import { getChannelPhoto, getShortStatus, getStatus } from './text';
+import Keyv from 'keyv';
 
 
 const config = nconf.env().file({ file: 'config.json' });
@@ -29,6 +30,7 @@ const twitch = new TwitchApi({
 });
 
 const bot = new Bot(telegramToken);
+
 const logger = createLoggerWrap(telegramToken, adminId);
 
 logger.info(`== SQD StreamNotify config ==` +
@@ -40,47 +42,47 @@ logger.info(`== SQD StreamNotify config ==` +
     `- heartbeat: ${heartbeatUrl}\n`
 );
 
-function postProcess(db: OnlineStream[], online: OnlineStream[]): {
+function postProcess(state: OnlineStream[], online: OnlineStream[]): {
     notifications: Notification[],
-    db: OnlineStream[],
+    state: OnlineStream[],
 } {
     const notifications: Notification[] = [];
-    const newDb: OnlineStream[] = [];
+    const newState: OnlineStream[] = [];
 
     // Check event: Start stream
     online.forEach((onlineStream, index) => {
-        const streamDb = db.find(item => item.name === onlineStream.name);
+        const streamState = state.find(item => item.name === onlineStream.name);
 
         // No in DB, need notification
-        if (!streamDb) {
+        if (!streamState) {
             notifications.push({
                 message: getStatus(onlineStream, true),
                 photo: getChannelPhoto(channels, onlineStream, EventType.live),
-                trigger: `new stream ${onlineStream.name}, db dump: ${JSON.stringify(db)}`,
+                trigger: `new stream ${onlineStream.name}, db dump: ${JSON.stringify(state)}`,
             });
             logger.info(`postProcess: notify ${onlineStream.name} (new)`);
 
-            newDb.push(onlineStream);
+            newState.push(onlineStream);
         }
         // Exist in DB, update timers
         else {
             logger.debug(`postProcess: update ${onlineStream.name} stream`);
-            if (onlineStream.title !== streamDb.title) {
+            if (onlineStream.title !== streamState.title) {
                 logger.info(`postProcess: notify ${onlineStream.name} (title), db index: ${index}`);
                 notifications.push({
                     message: getStatus(onlineStream, true),
                     photo: getChannelPhoto(channels, onlineStream, EventType.live),
-                    trigger: `title update: ${onlineStream.title} !== ${streamDb.title}`,
+                    trigger: `title update: ${onlineStream.title} !== ${streamState.title}`,
                 });
             }
 
-            newDb.push(onlineStream);
+            newState.push(onlineStream);
         }
     });
 
     // Check event: end stream
-    for (let i = db.length - 1; i >= 0; i--) {
-        const stream = db[i];
+    for (let i = state.length - 1; i >= 0; i--) {
+        const stream = state[i];
         const find = online.find(onlineItem => onlineItem.name === stream.name);
         if (find) {
             continue;
@@ -97,11 +99,11 @@ function postProcess(db: OnlineStream[], online: OnlineStream[]): {
     logger.debug(`postProcess: return -- ${JSON.stringify(notifications)}`);
     return {
         notifications: notifications,
-        db: newDb
+        state: newState
     };
 }
 
-async function taskCheckBans(db): Promise<void> {
+async function taskCheckBans(db: Keyv): Promise<void> {
     const usersSaved: string[] = JSON.parse(await db.get(DB_USERS));
     const usersFresh = await pullUsers(twitch, channelNames, logger);
     const usersFreshFlat = usersFresh.map(user => user.name);
@@ -142,21 +144,53 @@ function getChannelDisplayName(channels: Channels, user: string) {
     return channels[user]?.displayName ?? user;
 }
 
-async function taskCheckOnline(db: OnlineStream[]): Promise<OnlineStream[]> {
+async function taskCheckOnline(state: OnlineStream[], db: Keyv): Promise<OnlineStream[]> {
     const online = await pullStreamers(twitch, channelNames, logger);
     if (online === null) {
-        return db;
+        return state;
     }
 
-    const data = postProcess(db, online);
-    await sendNotifications(bot, chatId, data.notifications, logger);
+    const data = postProcess(state, online);
+    if (data.notifications.length > 0) {
+        await sendNotifications(bot, chatId, data.notifications, logger);
 
-    return data.db;
+        const msgID = await db.get(getChatIdKey(chatId));
+        if (msgID) {
+            const isDone = await updatePin(bot, chatId, msgID, getShortStatus(online), logger);
+            if (!isDone) {
+                await db.delete(getChatIdKey(chatId));
+                logger.info(`checkOnline: chatID = ${chatId} removed from DB`);
+            }
+        }
+    }
+
+    return data.state;
+}
+
+async function initBot(bot, db: Keyv) {
+    bot.command('get_pin', async ctx => {
+        const chatId = ctx?.message?.chat?.id;
+        if (!chatId || chatId !== chatId) {
+            logger.debug(`get_pin: skip message from chat -- ${chatId}`);
+            return;
+        }
+
+        const msg = await bot.api.sendMessage(chatId, escapeMarkdown(`Loading messageID...`), tgBaseOptions);
+        await db.set(getChatIdKey(chatId), msg.message_id);
+        logger.info(`get_pin: db updated`);
+
+        await sleep(2);
+        await updatePin(bot, chatId, msg.message_id, escapeMarkdown(`Now this message will be update every minute (${msg.message_id})`), logger);
+        logger.info(`get_pin: messageID -- ${msg.message_id}`);
+    });
 }
 
 async function main() {
     const db = await createDbConnection(logger, channelNames);
-    let store: OnlineStream[] = [];
+    let state: OnlineStream[] = [];
+
+    await initBot(bot, db);
+    bot.start().then(() => { logger.warn('HOW?') });
 
     while (true) {
         if (heartbeatUrl) {
@@ -164,10 +198,10 @@ async function main() {
             await axios.get(heartbeatUrl);
         }
 
-        logger.debug( `tick: task 0/2, (${new Date()}), store: ${store.length} / ${JSON.stringify(store)}`);
-        store = await taskCheckOnline(store);
+        logger.debug( `tick: task 0/2, (${new Date()}), state: ${state.length} / ${JSON.stringify(state)}`);
+        state = await taskCheckOnline(state, db);
 
-        logger.debug( `tick: task 1/2, (${new Date()}), store: ${store.length} / ${JSON.stringify(store)}`);
+        logger.debug( `tick: task 1/2, (${new Date()}), state: ${state.length} / ${JSON.stringify(state)}`);
         await sleep(timeout);
 
         await taskCheckBans(db);

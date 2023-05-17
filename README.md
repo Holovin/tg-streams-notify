@@ -52,6 +52,9 @@ Example of config, values:
 3. `pm2 start ecosystem.config.js` (see: https://pm2.keymetrics.io/docs/usage/quick-start)
 
 ## Version history
+##### v12
+- /get_pin command & functionality
+
 ##### v11
 - displayName new config property
 - ban check support

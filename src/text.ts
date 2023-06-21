@@ -15,11 +15,10 @@ export function getShortStatus(streams: OnlineStream[]): string {
         return message;
     }
 
-    const usersString = streams.map(stream => stream.name).join(', ');
-    message += `🔴 ${streams.length} online\\: ${usersString}\n`;
+    message += `🔴 ${streams.length} online`;
 
     streams.forEach(stream => {
-        message += `\n\*${stream.title}* [${stream.name} ↗](https://twitch.tv/${stream.name})`;
+        message += `\n· [${stream.name}](https://twitch.tv/${stream.name}) *${stream.title}*`;
     });
 
     return message;

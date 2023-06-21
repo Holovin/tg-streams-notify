@@ -1,52 +1,68 @@
 import { OnlineStream, UserInfo } from './types';
 import intervalToDuration from 'date-fns/intervalToDuration';
-import { escapeMarkdown } from './helpers';
+import TwitchApi from 'node-twitch';
+import { Logger2 } from './logger2';
+import { Logger } from 'winston';
+import { Telegram } from './telegram';
 
 
-export async function pullStreamers(twitch, channelNames, logger): Promise<OnlineStream[] | null> {
-    const online: OnlineStream[] = [];
-    const response = await twitch.getStreams({ channels: channelNames });
-    logger.debug(`pullStreamers: response: ${JSON.stringify(response)}`);
+export class Twitch {
+    private twitch: TwitchApi;
+    private logger: Logger;
 
-    if (!response.data) {
-        logger.warn(`pullStreamers: empty response??`);
-        return null;
+    public constructor(clientId: string, clientSecret: string) {
+        this.logger = Logger2.getInstance().getLogger('twitch');
+        this.twitch = new TwitchApi({
+            client_id: clientId,
+            client_secret: clientSecret,
+        });
     }
 
-    response.data.forEach(streamInfo => {
-        if (streamInfo.type !== 'live') {
-            return;
+    public async pullStreamers(channelNames: string[]): Promise<OnlineStream[] | null> {
+        const online: OnlineStream[] = [];
+        const response = await this.twitch.getStreams({ channels: channelNames });
+        this.logger.debug(`pullStreamers: response: ${JSON.stringify(response)}`);
+
+        if (!response.data) {
+            this.logger.warn(`pullStreamers: empty response??`);
+            return null;
         }
 
-        const startedAt = streamInfo.started_at;
-        const duration = intervalToDuration({
-            start: new Date(startedAt),
-            end: new Date(),
+        response.data.forEach(streamInfo => {
+            if (streamInfo.type !== 'live') {
+                return;
+            }
+
+            const startedAt = streamInfo.started_at;
+            const duration = intervalToDuration({
+                start: new Date(startedAt),
+                end: new Date(),
+            });
+
+            const stream = {
+                title: Telegram.escapeMarkdown(streamInfo.title ?? ''),
+                name: Telegram.escapeMarkdown(streamInfo.user_name ?? ''),
+                game: Telegram.escapeMarkdown(streamInfo.game_name ?? ''),
+                duration: `${duration.hours!.toString().padStart(2, '0')}:${duration.minutes!.toString().padStart(2, '0')}`,
+                hours: duration.hours ?? -1,
+            };
+            online.push(stream);
+
+            this.logger.debug(`pullStreamers: live -- ${stream.name}`);
         });
 
-        const stream = {
-            title: escapeMarkdown(streamInfo.title ?? ''),
-            name: escapeMarkdown(streamInfo.user_name ?? ''),
-            game: escapeMarkdown(streamInfo.game_name ?? ''),
-            duration: `${duration.hours!.toString().padStart(2, '0')}:${duration.minutes!.toString().padStart(2, '0')}`,
-            hours: duration.hours ?? -1,
-        };
-        online.push(stream);
+        this.logger.debug(`pullStreamers: return -- ${JSON.stringify(online)}`);
+        return online;
+    }
 
-        logger.debug(`pullStreamers: live -- ${stream.name}`);
-    });
+    public async pullUsers(channelNames: string[]): Promise<UserInfo[]> {
+        const response = await this.twitch.getUsers(channelNames);
+        const channelsAlive = response.data.map(channel => ({
+            name: channel.login.toLowerCase(),
+            displayName: channel.display_name, // TODO: check this
+        }));
 
-    logger.debug(`pullStreamers: return -- ${JSON.stringify(online)}`);
-    return online;
-}
-
-export async function pullUsers(twitch, channelNames, logger): Promise<UserInfo[]> {
-    const response = await twitch.getUsers(channelNames);
-    const channelsAlive = response.data.map(channel => ({
-        name: channel.login.toLowerCase(),
-        displayName: channel.displayName,
-    }));
-
-    logger.debug(`pullUsers: ${JSON.stringify(channelsAlive)}`);
-    return channelsAlive;
+        this.logger.debug(`pullUsers: ${JSON.stringify(channelsAlive)}`);
+        return channelsAlive;
+    }
 }

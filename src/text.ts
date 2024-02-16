@@ -1,10 +1,24 @@
-import { Channels, EventType, OnlineStream, photoMap, USER_RESERVED } from './types';
+import { Channels, EventType, OnlineStream, photoMap, PlatformType } from './types';
+import { Streamers } from './config';
+
+const platformInfo = {
+    [PlatformType.TWITCH]: {
+        emoji: '🔴',
+        label: 'Twitch',
+    },
+
+    [PlatformType.KICK]: {
+        emoji: '🟢',
+        label: 'Kick'
+    },
+}
 
 export function getStatus(stream: OnlineStream, isStarted: boolean): string {
     const duration = stream.duration.startsWith('00:0') ? '' : `for _${stream.duration}_ `;
-    return `${stream.name} ${isStarted ? 'is' : 'was'} live ${duration}${isStarted ? '🔴' : '⚪️'}\n` +
+    return `${stream.name} ${isStarted ? 'is' : 'was'} live ` +
+        `${duration}${isStarted ?  platformInfo[stream.platform].emoji : '⚪️'}\n` +
         `*${stream.title}*\n\n` +
-        `[Open stream on Twitch ↗](https://twitch.tv/${stream.name})`;
+        getStreamMarkdownLink(stream, `[Open stream on ${platformInfo[stream.platform].label} ↗]`);
 }
 
 export function getShortStatus(streams: OnlineStream[]): string {
@@ -15,19 +29,45 @@ export function getShortStatus(streams: OnlineStream[]): string {
         return message;
     }
 
-    message += `🔴 ${streams.length} online`;
+    const isSomeTwitch = streams.some(stream => stream.platform === PlatformType.TWITCH);
+    if (isSomeTwitch) {
+        message += platformInfo[PlatformType.TWITCH].emoji;
+    }
+
+    const isSomeKick = streams.some(stream => stream.platform === PlatformType.KICK);
+    if (isSomeKick) {
+        message += platformInfo[PlatformType.KICK].emoji;
+    }
+
+    message += ` ${streams.length} online`;
 
     streams.forEach(stream => {
-        message += `\n· [${stream.name}](https://twitch.tv/${stream.name}) *${stream.title}*`;
+        message += `\n· ${getStreamMarkdownLink(stream)} *${stream.title}*`;
     });
 
     return message;
 }
 
-export function getChannelPhoto(channels: Channels, onlineStream: OnlineStream|null, eventType: EventType): string {
+export function getChannelPhoto(streamers: Streamers, onlineStream: OnlineStream|null, eventType: EventType): string {
     if (onlineStream) {
-        return channels[onlineStream.name.toLowerCase().replace('\\', '')]?.[photoMap[eventType]];
+        const platform = onlineStream.platform === PlatformType.TWITCH
+            ? streamers.twitch
+            : streamers.kick;
+
+        return platform.streamers[onlineStream.name.toLowerCase().replace('\\', '')]?.[photoMap[eventType]];
     }
 
-    return channels[USER_RESERVED][photoMap[eventType]];
+    return streamers.defaultChannelValues[photoMap[eventType]];
+}
+
+export function getChannelDisplayName(channels: Channels, user: string) {
+    return channels[user]?.displayName ?? user;
+}
+
+function getStreamMarkdownLink(stream: OnlineStream, text = ''): string {
+    const baseDomain = stream.platform === PlatformType.TWITCH
+        ? 'https://twitch.tv'
+        : 'https://kick.com';
+
+    return `[${text === '' ? stream.name : text}](${baseDomain}/${stream.name})`;
 }

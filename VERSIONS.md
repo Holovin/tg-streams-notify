@@ -1,4 +1,8 @@
 ## Version history
+##### v14
+- kick support
+- massive code refactoring
+
 ##### v13
 - fix formatting changes
 

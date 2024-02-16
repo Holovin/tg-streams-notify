@@ -1,12 +1,15 @@
 import { createLogger, format, transports } from 'winston';
 import WinstonTelegram from 'winston-telegram';
+import { config } from './config';
 
 const loggerFormatter = format.printf(info => {
     return `${info.level.toUpperCase().padEnd(8)} [${info.timestamp}] ${info.message}`;
 });
 
-export function createLoggerWrap(telegramBotToken: string, telegramChatId: number) {
-    return createLogger({
+export const logger = createLoggerWrap(config.tg.token, config.tg.adminId);
+
+function createLoggerWrap(telegramBotToken: string, telegramChatId: number) {
+    const logger = createLogger({
         format: format.combine(
             format.timestamp({ format: 'YYYY/MM/DD HH:mm:ss' }),
             loggerFormatter,
@@ -26,4 +29,7 @@ export function createLoggerWrap(telegramBotToken: string, telegramChatId: numbe
             })
         ]
     });
+
+    logger.info('Log ready...');
+    return logger;
 }

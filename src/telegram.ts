@@ -1,6 +1,7 @@
 import { Notification } from './types';
 import { sleep } from './helpers';
 import { GrammyError } from 'grammy';
+import { logger } from './logger';
 
 
 export const tgBaseOptions = {
@@ -8,7 +9,7 @@ export const tgBaseOptions = {
     disable_web_page_preview: true,
 };
 
-export async function updatePin(bot, chatId: number, msgId: number, message: string, logger): Promise<boolean> {
+export async function updatePin(bot, chatId: number, msgId: number, message: string): Promise<boolean> {
     try {
         logger.debug(`updatePin: try ${chatId}:${msgId} -- ${message}`);
         await bot.api.editMessageText(chatId, msgId, message, tgBaseOptions);
@@ -34,7 +35,7 @@ export async function updatePin(bot, chatId: number, msgId: number, message: str
     return true;
 }
 
-export async function sendNotifications(bot, chatId: number, notifications: Notification[], logger) {
+export async function sendNotifications(bot, chatId: number, notifications: Notification[]) {
     for (const notification of notifications) {
         if (notification.photo) {
             await bot.api.sendPhoto(

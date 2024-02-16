@@ -1,0 +1,84 @@
+import { Channel, Channels } from './types';
+import nconf from 'nconf';
+
+export interface Streamers {
+    kick: {
+        streamers: Channels;
+        streamerNames: string[];
+    }
+
+    twitch: {
+        streamers: Channels;
+        streamerNames: string[];
+    }
+
+    defaultChannelValues: Channel;
+}
+
+export interface Config {
+    tg: {
+        chatId: number;
+        adminId: number;
+        token: string;
+    }
+
+    twitch: {
+        id: string;
+        secret: string;
+    }
+
+    timeout: number;
+    streamers: Streamers;
+    heatbeatUrl: string;
+}
+
+const nconfig = nconf.env().file({ file: 'config.json' });
+
+export const config: Config = {
+    tg: {
+        chatId: +nconfig.get('telegram:chat'),
+        adminId: +nconfig.get('telegram:admin'),
+        token: nconfig.get('telegram:token'),
+    },
+
+    twitch: {
+        id: nconfig.get('twitch:id'),
+        secret: nconfig.get('twitch:secret'),
+    },
+
+    streamers: readStreamersConfig(),
+    heatbeatUrl: nconfig.get('heartbeat'),
+    timeout: nconfig.get('timeout')
+}
+
+function readStreamersConfig(): Streamers {
+    const kickConfig = getChannelsFromConfig('kick:channels');
+    const twitchConfig = getChannelsFromConfig('twitch:channels');
+
+    return {
+        kick: {
+            streamers: kickConfig,
+            streamerNames: getChannelNamesFromChannels(kickConfig),
+        },
+        twitch: {
+            streamers: twitchConfig,
+            streamerNames: getChannelNamesFromChannels(twitchConfig),
+        },
+        defaultChannelValues: nconfig.get('defaultChannelValues') as Channel,
+    };
+}
+
+function getChannelsFromConfig(configKey: string): Channels {
+    return (
+        Object.fromEntries(
+            Object.entries(
+                nconfig.get(configKey) as Channels
+            )
+                .map(([k, v], i) => [k.toLowerCase(), v])
+        )
+    );
+}
+
+function getChannelNamesFromChannels(channels: Channels): string[] {
+    return Object.keys(channels);
+}

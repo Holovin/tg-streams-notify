@@ -9,12 +9,18 @@ export type Channels = {
     [key: string]: Channel;
 }
 
+export enum PlatformType {
+    TWITCH,
+    KICK,
+}
+
 export type OnlineStream = {
     title: string;
     name: string;
     game: string;
     duration: string;
     hours: number;
+    platform: PlatformType;
 }
 
 export type Notification = {
@@ -36,8 +42,6 @@ export const photoMap = {
     [EventType.banned]: 'banned',
     [EventType.unbanned]: 'unbanned',
 }
-
-export const USER_RESERVED = '_';
 
 export type UserInfo = {
     name: string,

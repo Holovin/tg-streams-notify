@@ -105,6 +105,6 @@ dist
 
 # dd
 .idea/
-config.json
+config*.json
 .DS_Store
 db.sqlite

@@ -8,7 +8,7 @@ import { logger } from './logger';
 export async function pullKickStreamers(kient: Kient, channelNames): Promise<OnlineStream[]> {
     const online: OnlineStream[] = [];
     for (const channelName of channelNames) {
-        const response = await kient.api.channel.getChannel(channelNames[0]);
+        const response = await kient.api.channel.getChannel(channelName);
         if (!response.data) {
             logger.warn(`pullKickStreamers: empty response??`);
             continue;

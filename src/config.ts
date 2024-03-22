@@ -27,6 +27,12 @@ export interface Config {
         secret: string;
     }
 
+    kick: {
+        login: string;
+        password: string;
+        otpKey: string;
+    }
+
     timeout: number;
     streamers: Streamers;
     heatbeatUrl: string;
@@ -44,6 +50,12 @@ export const config: Config = {
     twitch: {
         id: nconfig.get('twitch:id'),
         secret: nconfig.get('twitch:secret'),
+    },
+
+    kick: {
+        login: nconfig.get('kick:login'),
+        password: nconfig.get('kick:password'),
+        otpKey: nconfig.get('kick:otpKey'),
     },
 
     streamers: readStreamersConfig(),

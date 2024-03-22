@@ -31,6 +31,7 @@
     "kient": "^1.0.1-12",
     "nconf": "^0.12.0",
     "node-twitch": "^0.5.0",
+    "otpauth": "^9.2.2",
     "winston": "^3.8.2",
     "winston-telegram": "^2.6.0"
   }

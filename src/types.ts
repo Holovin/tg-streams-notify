@@ -36,7 +36,7 @@ export enum EventType {
     unbanned = 'unbanned',
 }
 
-export const photoMap = {
+export const photoEventMap = {
     [EventType.off]: 'photoOff',
     [EventType.live]: 'photoLive',
     [EventType.banned]: 'banned',

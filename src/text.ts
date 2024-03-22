@@ -1,5 +1,6 @@
-import { Channels, EventType, OnlineStream, photoMap, PlatformType } from './types';
+import { Channels, EventType, OnlineStream, photoEventMap, PlatformType } from './types';
 import { Streamers } from './config';
+import { logger } from './logger';
 
 const platformInfo = {
     [PlatformType.TWITCH]: {
@@ -15,6 +16,7 @@ const platformInfo = {
 
 export function getStatus(stream: OnlineStream, isStarted: boolean): string {
     const duration = stream.duration.startsWith('00:0') ? '' : `for _${stream.duration}_ `;
+    // TODO: use getChannelDisplayName here
     return `${stream.name} ${isStarted ? 'is' : 'was'} live ` +
         `${duration}${isStarted ?  platformInfo[stream.platform].emoji : '⚪️'}\n` +
         `*${stream.title}*\n\n` +
@@ -49,15 +51,18 @@ export function getShortStatus(streams: OnlineStream[]): string {
 }
 
 export function getChannelPhoto(streamers: Streamers, onlineStream: OnlineStream|null, eventType: EventType): string {
+    logger.info(JSON.stringify(onlineStream));
+
     if (onlineStream) {
         const platform = onlineStream.platform === PlatformType.TWITCH
             ? streamers.twitch
             : streamers.kick;
 
-        return platform.streamers[onlineStream.name.toLowerCase().replace('\\', '')]?.[photoMap[eventType]];
+        const streamerName = onlineStream.name.toLowerCase().replace('\\', '');
+        return platform.streamers[streamerName]?.[photoEventMap[eventType]] ?? streamers.defaultChannelValues[photoEventMap[eventType]];
     }
 
-    return streamers.defaultChannelValues[photoMap[eventType]];
+    return streamers.defaultChannelValues[photoEventMap[eventType]];
 }
 
 export function getChannelDisplayName(channels: Channels, user: string) {

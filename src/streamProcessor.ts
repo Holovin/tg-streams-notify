@@ -2,6 +2,7 @@ import { EventType, Notification, OnlineStream } from './types';
 import { getChannelPhoto, getStatus } from './text';
 import { config } from './config';
 import { logger } from './logger';
+import { escapeMarkdown } from './helpers';
 
 export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
     notifications: Notification[],
@@ -17,7 +18,7 @@ export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
         // No in DB, need notification
         if (!streamState) {
             notifications.push({
-                message: getStatus(onlineStream, true),
+                message: getStatus(`*${onlineStream.title}*`, onlineStream, true),
                 photo: getChannelPhoto(config.streamers, onlineStream, EventType.live),
                 trigger: `new stream ${onlineStream.name}, db dump: ${JSON.stringify(state)}`,
             });
@@ -28,12 +29,22 @@ export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
         // Exist in DB, update timers
         else {
             logger.debug(`postProcess: update ${onlineStream.name} stream`);
+
             if (onlineStream.title !== streamState.title) {
                 logger.info(`postProcess: notify ${onlineStream.name} (title), db index: ${index}`);
+
                 notifications.push({
-                    message: getStatus(onlineStream, true),
+                    message: getStatus(`💬 *${onlineStream.title}*`, onlineStream, true),
                     photo: getChannelPhoto(config.streamers, onlineStream, EventType.live),
                     trigger: `title update: ${onlineStream.title} !== ${streamState.title}`,
+                });
+            } else if (onlineStream.game !== streamState.game) {
+                logger.info(`postProcess: notify ${onlineStream.name} (game), db index: ${index}`);
+
+                notifications.push({
+                    message: getStatus(`🎮 *${onlineStream.title}* · ${onlineStream.game}`, onlineStream, true),
+                    photo: getChannelPhoto(config.streamers, onlineStream, EventType.live),
+                    trigger: `game update: ${onlineStream.game} !== ${streamState.game}`,
                 });
             }
 
@@ -51,7 +62,7 @@ export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
 
         logger.info(`postProcess: stream is dead -- ${stream.name}`);
         notifications.push({
-            message: getStatus(stream, false),
+            message: getStatus(`*${stream.title}*`, stream, false),
             photo: getChannelPhoto(config.streamers, stream, EventType.off),
             trigger: `notify ${stream.name} (dead)`,
         });

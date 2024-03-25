@@ -1,24 +1,23 @@
-import { Channels, EventType, OnlineStream, photoMap, PlatformType } from './types';
-import { Streamers } from './config';
+import { Channels, EventType, OnlineStream, photoEventMap, PlatformType } from './types';
+import { Streamers, config } from './config';
+import { logger } from './logger';
 
 const platformInfo = {
     [PlatformType.TWITCH]: {
         emoji: '🔴',
         label: 'Twitch',
     },
-
-    [PlatformType.KICK]: {
-        emoji: '🟢',
-        label: 'Kick'
-    },
 }
 
-export function getStatus(stream: OnlineStream, isStarted: boolean): string {
+export function getStatus(title: string, stream: OnlineStream, isOnline: boolean): string {
     const duration = stream.duration.startsWith('00:0') ? '' : `for _${stream.duration}_ `;
-    return `${stream.name} ${isStarted ? 'is' : 'was'} live ` +
-        `${duration}${isStarted ?  platformInfo[stream.platform].emoji : '⚪️'}\n` +
-        `*${stream.title}*\n\n` +
-        getStreamMarkdownLink(stream, `[Open stream on ${platformInfo[stream.platform].label} ↗]`);
+    const streamName = getChannelDisplayName(config.streamers.twitch.streamers, stream.name);
+    const streamUrl = getStreamMarkdownLink(stream, `[Open stream on ${platformInfo[stream.platform].label} ↗]`);
+
+    return `${streamName} ${isOnline ? 'is' : 'was'} live ` +
+        `${duration}${isOnline ? platformInfo[stream.platform].emoji : '⚪️'}\n` +
+        `${title}\n\n` +
+        streamUrl;
 }
 
 export function getShortStatus(streams: OnlineStream[]): string {
@@ -34,11 +33,6 @@ export function getShortStatus(streams: OnlineStream[]): string {
         message += platformInfo[PlatformType.TWITCH].emoji;
     }
 
-    const isSomeKick = streams.some(stream => stream.platform === PlatformType.KICK);
-    if (isSomeKick) {
-        message += platformInfo[PlatformType.KICK].emoji;
-    }
-
     message += ` ${streams.length} online`;
 
     streams.forEach(stream => {
@@ -49,15 +43,16 @@ export function getShortStatus(streams: OnlineStream[]): string {
 }
 
 export function getChannelPhoto(streamers: Streamers, onlineStream: OnlineStream|null, eventType: EventType): string {
-    if (onlineStream) {
-        const platform = onlineStream.platform === PlatformType.TWITCH
-            ? streamers.twitch
-            : streamers.kick;
+    logger.info(JSON.stringify(onlineStream));
 
-        return platform.streamers[onlineStream.name.toLowerCase().replace('\\', '')]?.[photoMap[eventType]];
+    if (onlineStream) {
+        const platform = streamers.twitch;
+
+        const streamerName = onlineStream.name.toLowerCase().replace('\\', '');
+        return platform.streamers[streamerName]?.[photoEventMap[eventType]] ?? streamers.defaultChannelValues[photoEventMap[eventType]];
     }
 
-    return streamers.defaultChannelValues[photoMap[eventType]];
+    return streamers.defaultChannelValues[photoEventMap[eventType]];
 }
 
 export function getChannelDisplayName(channels: Channels, user: string) {
@@ -65,9 +60,7 @@ export function getChannelDisplayName(channels: Channels, user: string) {
 }
 
 function getStreamMarkdownLink(stream: OnlineStream, text = ''): string {
-    const baseDomain = stream.platform === PlatformType.TWITCH
-        ? 'https://twitch.tv'
-        : 'https://kick.com';
+    const baseDomain = stream.platform === PlatformType.TWITCH ? 'https://twitch.tv' : '';
 
     return `[${text === '' ? stream.name : text}](${baseDomain}/${stream.name})`;
 }

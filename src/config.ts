@@ -2,11 +2,6 @@ import { Channel, Channels } from './types';
 import nconf from 'nconf';
 
 export interface Streamers {
-    kick: {
-        streamers: Channels;
-        streamerNames: string[];
-    }
-
     twitch: {
         streamers: Channels;
         streamerNames: string[];
@@ -27,6 +22,7 @@ export interface Config {
         secret: string;
     }
 
+    env: string;
     timeout: number;
     streamers: Streamers;
     heatbeatUrl: string;
@@ -46,20 +42,16 @@ export const config: Config = {
         secret: nconfig.get('twitch:secret'),
     },
 
+    env: nconfig.get('env'),
     streamers: readStreamersConfig(),
     heatbeatUrl: nconfig.get('heartbeat'),
     timeout: nconfig.get('timeout')
 }
 
 function readStreamersConfig(): Streamers {
-    const kickConfig = getChannelsFromConfig('kick:channels');
     const twitchConfig = getChannelsFromConfig('twitch:channels');
 
     return {
-        kick: {
-            streamers: kickConfig,
-            streamerNames: getChannelNamesFromChannels(kickConfig),
-        },
         twitch: {
             streamers: twitchConfig,
             streamerNames: getChannelNamesFromChannels(twitchConfig),

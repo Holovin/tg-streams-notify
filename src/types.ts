@@ -10,8 +10,7 @@ export type Channels = {
 }
 
 export enum PlatformType {
-    TWITCH,
-    KICK,
+    TWITCH
 }
 
 export type OnlineStream = {
@@ -36,7 +35,7 @@ export enum EventType {
     unbanned = 'unbanned',
 }
 
-export const photoMap = {
+export const photoEventMap = {
     [EventType.off]: 'photoOff',
     [EventType.live]: 'photoLive',
     [EventType.banned]: 'banned',

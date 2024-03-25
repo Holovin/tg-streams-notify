@@ -1,32 +1,54 @@
 import Keyv from 'keyv';
+import { logger } from './logger';
 
 
-export const DB_USERS = 'users';
-export const DB_CHAT = 'chatid';
+export class Database {
+    public static readonly DB_USERS = 'users';
+    public static readonly DB_CHAT = 'chatid';
 
-export function getChatIdKey(chatId: number): string {
-    return `${DB_CHAT}_${chatId}`;
-}
+    private db: Keyv;
 
-export default async function createDbConnection(logger, channelNames: string[]) {
-    const keyv = new Keyv('sqlite://db.sqlite', {
-        adapter: 'sqlite',
-        table: 'settings',
-        busyTimeout: 10000,
-    });
-
-    const result1 = await keyv.has('test');
-    await keyv.set('test', 'yes');
-    const result2 = await keyv.get('test');
-
-    if (result1 === result2) {
-        logger.error('Something wrong with storage...');
+    constructor() {
+        this.db = new Keyv('sqlite://db.sqlite', {
+            adapter: 'sqlite',
+            table: 'settings',
+            busyTimeout: 10000,
+        });
     }
 
-    if (!result1) {
-        await keyv.set(DB_USERS, JSON.stringify(channelNames));
-        logger.info('Init DB');
+    public static getChatIdKey(chatId: number): string {
+        return `${Database.DB_CHAT}_${chatId}`;
     }
 
-    return keyv;
+    public async get(key: string) {
+        return this.db.get(key);
+    }
+
+    public async has(key: string) {
+        return this.db.has(key);
+    }
+
+    public async delete(key: string) {
+        return this.db.delete(key);
+    }
+
+    public async set(key: string, value: string) {
+        return this.db.set(key, value);
+    }
+
+    public async init(channelNames: string[]) {
+        const result1 = await this.has('test');
+        await this.set('test', 'yes');
+        const result2 = await this.get('test');
+
+        if (result1 === result2) {
+            logger.error('Something wrong with storage...');
+        }
+
+        const users = await this.has(Database.DB_USERS);
+        if (!users) {
+            await this.db.set(Database.DB_USERS, JSON.stringify(channelNames));
+            logger.info('Init DB');
+        }
+    }
 }

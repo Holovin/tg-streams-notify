@@ -2,53 +2,86 @@ import { OnlineStream, PlatformType, UserInfo } from './types';
 import intervalToDuration from 'date-fns/intervalToDuration';
 import { escapeMarkdown } from './helpers';
 import { logger } from './logger';
+import TwitchApi from 'node-twitch';
 
 
-export async function pullTwitchStreamers(twitch, channelNames): Promise<OnlineStream[]> {
-    const online: OnlineStream[] = [];
-    const response = await twitch.getStreams({ channels: channelNames });
-    logger.debug(`pullTwitchStreamers: response: ${JSON.stringify(response)}`);
+export class Twitch {
+    private tv: TwitchApi;
 
-    if (!response.data) {
-        logger.warn(`pullTwitchStreamers: empty response??`);
-        return [];
-    }
-
-    response.data.forEach(streamInfo => {
-        if (streamInfo.type !== 'live') {
-            return;
-        }
-
-        const startedAt = streamInfo.started_at;
-        const duration = intervalToDuration({
-            start: new Date(startedAt),
-            end: new Date(),
+    public constructor(id: string, secret: string) {
+        this.tv = new TwitchApi({
+            client_id: id,
+            client_secret: secret,
         });
 
-        const stream: OnlineStream = {
-            title: escapeMarkdown(streamInfo.title ?? ''),
-            name: escapeMarkdown(streamInfo.user_name ?? ''),
-            game: escapeMarkdown(streamInfo.game_name ?? ''),
-            duration: `${duration.hours!.toString().padStart(2, '0')}:${duration.minutes!.toString().padStart(2, '0')}`,
-            hours: duration.hours ?? -1,
-            platform: PlatformType.TWITCH,
-        };
-        online.push(stream);
+        logger.info(`[TwitchAPI] id = [...${id.slice(-5)}], secret = [...${secret.slice(-5)}]`);
+    }
 
-        logger.debug(`pullTwitchStreamers: live -- ${stream.name}`);
-    });
+    public async pullTwitchStreamers(channelNames): Promise<OnlineStream[]> {
+        const online: OnlineStream[] = [];
+        let response;
 
-    logger.debug(`pullTwitchStreamers: return -- ${JSON.stringify(online)}`);
-    return online;
-}
+        try {
+            response = await this.tv.getStreams({ channels: channelNames });
+            logger.debug(`pullTwitchStreamers: response: ${JSON.stringify(response)}`);
 
-export async function pullTwitchAliveUsers(twitch, channelNames): Promise<UserInfo[]> {
-    const response = await twitch.getUsers(channelNames);
-    const channelsAlive = response.data.map(channel => ({
-        name: channel.login.toLowerCase(),
-        displayName: channel.displayName,
-    }));
+        } catch (e) {
+            if (e instanceof Error) {
+                logger.error(`pullTwitchStreams: ${e.message}`);
 
-    logger.debug(`pullTwitchAliveUsers: ${JSON.stringify(channelsAlive)}`);
-    return channelsAlive;
+            } else {
+                logger.error(`pullTwitchStreams: ???`);
+            }
+
+            return [];
+        }
+
+        if (!response || !response.data) {
+            logger.warn(`pullTwitchStreamers: empty response??`);
+            return [];
+        }
+
+        response.data.forEach(streamInfo => {
+            if (streamInfo.type !== 'live') {
+                return;
+            }
+
+            const startedAt = streamInfo.started_at;
+            const duration = intervalToDuration({
+                start: new Date(startedAt),
+                end: new Date(),
+            });
+
+            const stream: OnlineStream = {
+                title: escapeMarkdown(streamInfo.title ?? ''),
+                name: escapeMarkdown(streamInfo.user_name ?? ''),
+                game: escapeMarkdown(streamInfo.game_name ?? ''),
+                duration: `${duration.hours!.toString().padStart(2, '0')}:${duration.minutes!.toString().padStart(2, '0')}`,
+                hours: duration.hours ?? -1,
+                platform: PlatformType.TWITCH,
+            };
+            online.push(stream);
+
+            logger.debug(`pullTwitchStreamers: live -- ${stream.name}`);
+        });
+
+        logger.debug(`pullTwitchStreamers: return -- ${JSON.stringify(online)}`);
+        return online;
+    }
+
+    public async pullTwitchAliveUsers(channelNames): Promise<UserInfo[]|null> {
+        try {
+            const response = await this.tv.getUsers(channelNames);
+            const channelsAlive = response.data.map(channel => ({
+                name: channel.login.toLowerCase(),
+                displayName: channel.display_name,
+            }));
+
+            logger.debug(`pullTwitchAliveUsers: ${JSON.stringify(channelsAlive)}`);
+            return channelsAlive;
+
+        } catch (e) {
+            return null;
+        }
+    }
 }

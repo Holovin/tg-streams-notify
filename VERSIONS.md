@@ -1,4 +1,11 @@
 ## Version history
+##### v15
+- feat: remove kick support (there is no official API, unofficial too much buggy)
+- feat: notifications on game change
+- feat: change notifications text format
+- fix: crash when db twitch ban value was empty
+- DX: ts-node for nice stacktrace, `env` config property for disabling telegram stacktrace messages
+
 ##### v14
 - kick support
 - massive code refactoring

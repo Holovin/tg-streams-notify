@@ -1,12 +1,12 @@
 {
   "name": "sqd_streamnotify",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Twitch streams notifications",
-  "main": "dist/index.js",
+  "main": "src/index.ts",
   "scripts": {
     "build": "tsc",
-    "run": "node dist/index.js",
-    "start": "npm run build && npm run run"
+    "run": "ts-node src/index.ts",
+    "start": "npm run run"
   },
   "repository": {
     "type": "git",
@@ -19,19 +19,21 @@
   },
   "homepage": "https://github.com/Holovin/sqd_streamnotify#readme",
   "devDependencies": {
-    "@types/nconf": "^0.10.3",
+    "@types/nconf": "^0.10.6",
+    "@types/node": "^20.11.30",
+    "ts-node": "^10.9.2",
+    "tslib": "^2.6.2",
     "typescript": "^5.0.4"
   },
   "dependencies": {
-    "@keyv/sqlite": "^3.6.5",
-    "axios": "^1.6.7",
-    "date-fns": "^2.29.3",
-    "grammy": "^1.15.3",
-    "keyv": "^4.5.2",
-    "kient": "^1.0.1-12",
-    "nconf": "^0.12.0",
+    "@keyv/sqlite": "^3.6.7",
+    "axios": "^1.6.8",
+    "date-fns": "^2.30.0",
+    "grammy": "^1.21.1",
+    "keyv": "^4.5.4",
+    "nconf": "^0.12.1",
     "node-twitch": "^0.5.0",
-    "winston": "^3.8.2",
-    "winston-telegram": "^2.6.0"
+    "winston": "^3.13.0",
+    "winston-telegram": "^2.7.0"
   }
 }

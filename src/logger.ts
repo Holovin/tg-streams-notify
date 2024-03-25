@@ -26,6 +26,7 @@ function createLoggerWrap(telegramBotToken: string, telegramChatId: number) {
                 token: telegramBotToken,
                 chatId: telegramChatId,
                 level: 'info',
+                handleExceptions: config.env !== 'DEV',
             })
         ]
     });

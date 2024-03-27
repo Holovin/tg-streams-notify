@@ -1,6 +1,5 @@
-import { Channels, EventType, OnlineStream, photoEventMap, PlatformType } from './types';
-import { Streamers, config } from './config';
-import { logger } from './logger';
+import { Channels, EventType, OnlineStream, photoEventMap, PlatformType } from './types.js';
+import { Streamers, config } from './config.js';
 
 const platformInfo = {
     [PlatformType.TWITCH]: {
@@ -43,8 +42,6 @@ export function getShortStatus(streams: OnlineStream[]): string {
 }
 
 export function getChannelPhoto(streamers: Streamers, onlineStream: OnlineStream|null, eventType: EventType): string {
-    logger.info(JSON.stringify(onlineStream));
-
     if (onlineStream) {
         const platform = streamers.twitch;
 
@@ -59,8 +56,11 @@ export function getChannelDisplayName(channels: Channels, user: string) {
     return channels[user]?.displayName ?? user;
 }
 
-function getStreamMarkdownLink(stream: OnlineStream, text = ''): string {
+export function getStreamLink(stream: OnlineStream): string {
     const baseDomain = stream.platform === PlatformType.TWITCH ? 'https://twitch.tv' : '';
+    return `${baseDomain}/${stream.name}`;
+}
 
-    return `[${text === '' ? stream.name : text}](${baseDomain}/${stream.name})`;
+function getStreamMarkdownLink(stream: OnlineStream, text = ''): string {
+    return `[${text === '' ? stream.name : text}](${getStreamLink(stream)})`;
 }

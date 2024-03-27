@@ -1,5 +1,5 @@
-import { Channel, Channels } from './types';
 import nconf from 'nconf';
+import { Channel, Channels } from './types.js';
 
 export interface Streamers {
     twitch: {
@@ -23,6 +23,7 @@ export interface Config {
     }
 
     env: string;
+    recorder: string[];
     timeout: number;
     streamers: Streamers;
     heatbeatUrl: string;
@@ -43,6 +44,7 @@ export const config: Config = {
     },
 
     env: nconfig.get('env'),
+    recorder: nconfig.get('recorder'),
     streamers: readStreamersConfig(),
     heatbeatUrl: nconfig.get('heartbeat'),
     timeout: nconfig.get('timeout')

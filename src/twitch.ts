@@ -1,8 +1,8 @@
-import { OnlineStream, PlatformType, UserInfo } from './types';
-import intervalToDuration from 'date-fns/intervalToDuration';
-import { escapeMarkdown } from './helpers';
-import { logger } from './logger';
-import TwitchApi from 'node-twitch';
+import { intervalToDuration } from 'date-fns/intervalToDuration';
+import { OnlineStream, PlatformType, UserInfo } from './types.js';
+import { escapeMarkdown } from './helpers.js';
+import { logger } from './logger.js';
+import { TwitchApi } from 'node-twitch';
 
 
 export class Twitch {
@@ -52,11 +52,19 @@ export class Twitch {
                 end: new Date(),
             });
 
+            if (!duration.hours) {
+                duration.hours = 0;
+            }
+
+            if (!duration.minutes) {
+                duration.minutes = 0;
+            }
+
             const stream: OnlineStream = {
                 title: escapeMarkdown(streamInfo.title ?? ''),
                 name: escapeMarkdown(streamInfo.user_name ?? ''),
                 game: escapeMarkdown(streamInfo.game_name ?? ''),
-                duration: `${duration.hours!.toString().padStart(2, '0')}:${duration.minutes!.toString().padStart(2, '0')}`,
+                duration: `${duration.hours.toString().padStart(2, '0')}:${duration.minutes.toString().padStart(2, '0')}`,
                 hours: duration.hours ?? -1,
                 platform: PlatformType.TWITCH,
             };

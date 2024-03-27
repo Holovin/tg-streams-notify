@@ -1,15 +1,18 @@
-import { EventType, Notification, OnlineStream } from './types';
-import { getChannelPhoto, getStatus } from './text';
-import { config } from './config';
-import { logger } from './logger';
-import { escapeMarkdown } from './helpers';
+import { EventType, Notification, OnlineStream } from './types.js';
+import { getChannelPhoto, getStatus } from './text.js';
+import { config } from './config.js';
+import { logger } from './logger.js';
 
 export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
     notifications: Notification[],
     state: OnlineStream[],
+    toStartRecord: OnlineStream[],
+    toStopRecord: OnlineStream[],
 } {
     const notifications: Notification[] = [];
     const newState: OnlineStream[] = [];
+    const toStartRecord: OnlineStream[] = [];
+    const toStopRecord: OnlineStream[] = [];
 
     // Check event: Start stream
     online.forEach((onlineStream, index) => {
@@ -23,8 +26,14 @@ export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
                 trigger: `new stream ${onlineStream.name}, db dump: ${JSON.stringify(state)}`,
             });
             logger.info(`postProcess: notify ${onlineStream.name} (new)`);
-
             newState.push(onlineStream);
+
+            if (config.recorder.includes(onlineStream.name.toLowerCase())) {
+                logger.info(`postProcess: toStartRecord -- ${onlineStream.name}`);
+                toStartRecord.push(onlineStream);
+            } else {
+                logger.info(`postProcess: toStartRecord ${onlineStream.name} -- skip ${JSON.stringify(config.recorder)}`);
+            }
         }
         // Exist in DB, update timers
         else {
@@ -66,11 +75,18 @@ export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
             photo: getChannelPhoto(config.streamers, stream, EventType.off),
             trigger: `notify ${stream.name} (dead)`,
         });
+
+        if (config.recorder.includes(stream.name)) {
+            logger.info(`postProcess: toStopRecord -- ${stream.name}`);
+            toStopRecord.push(stream);
+        }
     }
 
     logger.debug(`postProcess: return -- ${JSON.stringify(notifications)}`);
     return {
         notifications: notifications,
-        state: newState
+        state: newState,
+        toStartRecord: toStartRecord,
+        toStopRecord: toStopRecord,
     };
 }

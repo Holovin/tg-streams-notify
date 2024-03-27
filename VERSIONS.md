@@ -1,4 +1,12 @@
 ## Version history
+##### v16
+- feat: recorder (beta & unstable)
+- fix: crash when `/get_pin` called (missed this context)
+- fix: reset current state after `/get_pin` (to force pin message update)
+- fix: `/get_pin` was unprotected (now only for admin)
+- fix: rare crashes with undefined duration values
+- DX: move project to ESM
+
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)
 - feat: notifications on game change

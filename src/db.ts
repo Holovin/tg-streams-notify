@@ -1,5 +1,5 @@
 import Keyv from 'keyv';
-import { logger } from './logger';
+import { logger } from './logger.js';
 
 
 export class Database {
@@ -47,8 +47,10 @@ export class Database {
 
         const users = await this.has(Database.DB_USERS);
         if (!users) {
-            await this.db.set(Database.DB_USERS, JSON.stringify(channelNames));
-            logger.info('Init DB');
+            await this.set(Database.DB_USERS, JSON.stringify(channelNames));
+            logger.info('Init DB (1st time)');
         }
+
+        logger.info('Init DB done...');
     }
 }

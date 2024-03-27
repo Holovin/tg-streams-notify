@@ -1,13 +1,14 @@
-import { getArrDiff, sleep } from './helpers';
 import axios from 'axios';
-import { EventType, Notification, OnlineStream } from './types';
-import { logger } from './logger';
-import { Database } from './db';
-import { Twitch } from './twitch';
-import { Telegram } from './telegram';
-import { getChannelDisplayName, getChannelPhoto, getShortStatus } from './text';
-import { config } from './config';
-import { postProcess } from './streamProcessor';
+import { escapeMarkdown, getArrDiff, sleep } from './helpers.js';
+import { EventType, Notification, OnlineStream } from './types.js';
+import { logger } from './logger.js';
+import { Database } from './db.js';
+import { Twitch } from './twitch.js';
+import { Telegram } from './telegram.js';
+import { getChannelDisplayName, getChannelPhoto, getShortStatus, getStreamLink } from './text.js';
+import { config } from './config.js';
+import { postProcess } from './streamProcessor.js';
+import { Recorder } from './recorder.js';
 
 logger.info(`== SQD StreamNotify config ==` +
     `\nStarted, settings:\n` +
@@ -23,11 +24,14 @@ class App {
     private db: Database;
     private twitch: Twitch;
     private bot: Telegram;
+    private recorder: Recorder;
+    private lastRecorderNotification: Date = new Date(0);
 
     public constructor() {
         this.db = new Database();
         this.twitch = new Twitch(config.twitch.id, config.twitch.secret);
         this.bot = new Telegram(config.tg.token);
+        this.recorder = new Recorder();
     }
 
     public async main() {
@@ -49,17 +53,23 @@ class App {
             logger.debug( `tick: stateProcess, (${new Date()}), state: ${this.state.length} `);
             this.state = await this.stateProcess(this.state, online);
 
-            await sleep(config.timeout);
-
             logger.debug( `tick: checkBansTwitch, (${new Date()}), state: ${this.state.length}`);
             await this.taskCheckBansTwitch();
+
+            if (config.recorder.length > 0) {
+                logger.debug( `tick: checkDiskState, (${new Date()})`);
+                const notifications = await this.checkDiskState();
+                if (notifications.length > 0) {
+                    await this.bot.sendNotifications(config.tg.adminId, notifications);
+                }
+            }
 
             logger.debug( `tick: loop done, (${new Date()})`);
             await sleep(config.timeout);
         }
     }
 
-    public async taskCheckOnline(): Promise<OnlineStream[]> {
+    private async taskCheckOnline(): Promise<OnlineStream[]> {
         const out: OnlineStream[] = [];
 
         if (config.streamers.twitch.streamerNames.length > 0) {
@@ -69,7 +79,7 @@ class App {
         return out;
     }
 
-    public async taskCheckBansTwitch(): Promise<void> {
+    private async taskCheckBansTwitch(): Promise<void> {
         const usersSaved: string[] = JSON.parse(await this.db.get(Database.DB_USERS));
         const usersFresh = await this.twitch.pullTwitchAliveUsers(config.streamers.twitch.streamerNames);
         if (!usersFresh) {
@@ -110,12 +120,24 @@ class App {
     }
 
     private async init() {
+        const callbackGetPin = async (key: string, value: string) => {
+            logger.info(`get_pin [callback]: reset current state`);
+            this.state = [];
+            return this.db.set(key, value);
+        };
+
+        const callbackGetRe = async () => {
+            logger.info(`get_re [callback]`);
+            return this.recorder.getActiveRecordings();
+        }
+
         await this.db.init(config.streamers.twitch.streamerNames);
-        await this.bot.initBot(this.db.set);
+        await this.bot.initBot(callbackGetPin, callbackGetRe);
     }
 
     private async stateProcess(state, online) {
         const data = postProcess(state, online);
+
         if (data.notifications.length > 0) {
             await this.bot.sendNotifications(config.tg.chatId, data.notifications);
 
@@ -129,7 +151,72 @@ class App {
             }
         }
 
+        if (data.toStopRecord.length > 0) {
+            const notifications: Notification[] = [];
+            logger.info(`stateProcess: stop queue -- ${data.toStopRecord.length}`);
+
+            for (const rec of data.toStopRecord) {
+                this.recorder.stopByUrl(rec.name);
+                notifications.push({
+                    message: `🕵️ *Stop recording* ` + escapeMarkdown(`-- ${rec.name}`),
+                    trigger: 'recorder+stop',
+                });
+            }
+
+            await this.bot.sendNotifications(config.tg.adminId, notifications);
+        }
+
+        if (data.toStartRecord.length > 0) {
+            const notifications: Notification[] = [];
+            logger.info(`stateProcess: start queue -- ${data.toStartRecord.length}`);
+
+            for (const rec of data.toStartRecord) {
+                await this.recorder.add(getStreamLink(rec), rec.name);
+                notifications.push({
+                    message: `🕵️ *Start recording* ` + escapeMarkdown(`-- ${rec.name}`),
+                    trigger: 'recorder+add'
+                });
+            }
+
+            await this.bot.sendNotifications(config.tg.adminId, notifications);
+        }
+
         return data.state;
+    }
+
+    private async checkDiskState(): Promise<Notification[]> {
+        const freeSpace = await Recorder.getFreeSpace();
+        if (!freeSpace) {
+            logger.error(`checkDiskState: no response!`);
+            return [{
+                message: `🧯 *checkDiskState error\\!*`,
+                trigger: `checkDiskState ERR`,
+            }];
+        }
+
+        if (freeSpace.freeAvailableG < 7) {
+            this.updateLastRN();
+            return [{
+                message: `🧯 *LOW DISK SPACE (<7)*` + escapeMarkdown(`: ${freeSpace.freeAvailableG}`),
+                trigger: `checkDiskState <7`
+            }];
+        }
+
+        const HOUR = 60 * 60 * 1000;
+        const diff = Date.now() - this.lastRecorderNotification;
+        if (diff > HOUR) {
+            this.updateLastRN();
+            return [{
+                message: `💁 *Disk space state*` + escapeMarkdown(`: ${freeSpace.freeAvailableG}`),
+                trigger: `checkDiskState OK`,
+            }];
+        }
+
+        return [];
+    }
+
+    private updateLastRN() {
+        this.lastRecorderNotification = new Date();
     }
 }
 

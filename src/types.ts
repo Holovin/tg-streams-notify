@@ -1,4 +1,4 @@
-export type Channel = {
+export interface Channel {
     name: string;
     photoLive?: string;
     photoOff?: string;
@@ -13,7 +13,7 @@ export enum PlatformType {
     TWITCH
 }
 
-export type OnlineStream = {
+export interface OnlineStream {
     title: string;
     name: string;
     game: string;
@@ -22,7 +22,7 @@ export type OnlineStream = {
     platform: PlatformType;
 }
 
-export type Notification = {
+export interface Notification {
     message: string;
     photo?: string;
     trigger?: string;
@@ -42,7 +42,7 @@ export const photoEventMap = {
     [EventType.unbanned]: 'unbanned',
 }
 
-export type UserInfo = {
+export interface UserInfo {
     name: string,
     displayName: string
 }

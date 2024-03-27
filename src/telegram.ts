@@ -1,10 +1,12 @@
-import { Notification } from './types';
 import { GrammyError } from 'grammy';
 import { Bot } from 'grammy';
-import { config } from './config';
-import { logger } from './logger';
-import { escapeMarkdown, sleep } from './helpers';
-import { Database } from './db';
+import { Notification } from './types.js';
+import { config } from './config.js';
+import { logger } from './logger.js';
+import { escapeMarkdown, sleep } from './helpers.js';
+import { Database } from './db.js';
+import { StreamRecord } from './recorder.js';
+import { format } from 'date-fns/format';
 
 
 export class Telegram {
@@ -16,10 +18,13 @@ export class Telegram {
         logger.info(`[TelegramAPI] token = [...${token.slice(-5)}]`);
     }
 
-    public async initBot(dbSetFunction: (key: string, value: string) => Promise<true>) {
+    public async initBot(
+        dbSetFunction: (key: string, value: string) => Promise<true>,
+        getReFunction: () => Promise<StreamRecord[]>,
+        ) {
         this.bot.command('get_pin', async ctx => {
             const chatId = ctx?.message?.chat?.id;
-            if (!chatId || chatId !== chatId) {
+            if (!chatId || chatId !== config.tg.adminId) {
                 logger.debug(`get_pin: skip message from chat -- ${chatId}`);
                 return;
             }
@@ -39,6 +44,26 @@ export class Telegram {
                 escapeMarkdown(`Now this message will be update every minute (${msg.message_id})`)
             );
             logger.info(`get_pin: messageID -- ${msg.message_id}`);
+        });
+
+        this.bot.command('get_re',  async (ctx) => {
+            const chatId = ctx?.message?.chat?.id;
+            if (!chatId || chatId !== config.tg.adminId) {
+                logger.debug(`get_pin: skip message from chat -- ${chatId}`);
+                return;
+            }
+
+            const recordings = await getReFunction();
+
+            const message = recordings.map((record, index) => {
+                return escapeMarkdown(`${index + 1}. ${record.url} • from: ${format(record.startTime, 'yyyy-MM-dd HH:mm:ss')}`);
+            }).join('\n');
+
+            const msg = await this.bot.api.sendMessage(
+                chatId,
+                message ?? 'There is no active recordings',
+                { ...tgBaseOptions as any }
+            );
         });
     }
 

@@ -1,6 +1,6 @@
 import { createLogger, format, transports } from 'winston';
 import WinstonTelegram from 'winston-telegram';
-import { config } from './config';
+import { config } from './config.js';
 
 const loggerFormatter = format.printf(info => {
     return `${info.level.toUpperCase().padEnd(8)} [${info.timestamp}] ${info.message}`;
@@ -22,14 +22,18 @@ function createLoggerWrap(telegramBotToken: string, telegramChatId: number) {
                 filename: 'info.log',
                 level: 'info',
             }),
+        ]
+    });
+
+    if (config.env !== 'DEV') {
+        logger.transports.push(
             new WinstonTelegram({
                 token: telegramBotToken,
                 chatId: telegramChatId,
                 level: 'info',
-                handleExceptions: config.env !== 'DEV',
-            })
-        ]
-    });
+            }),
+        );
+    }
 
     logger.info('Log ready...');
     return logger;

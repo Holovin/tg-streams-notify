@@ -6,6 +6,7 @@
 - fix: `/get_pin` was unprotected (now only for admin)
 - fix: rare crashes with undefined duration values
 - DX: move project to ESM
+- fix: rename pm2 ecosystem file for ESM support
 
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)

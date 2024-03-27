@@ -61,7 +61,7 @@ export class Telegram {
 
             const msg = await this.bot.api.sendMessage(
                 chatId,
-                message ?? 'There is no active recordings',
+                message || 'There is no active recordings',
                 { ...tgBaseOptions as any }
             );
         });

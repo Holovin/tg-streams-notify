@@ -51,4 +51,4 @@ Example of config, values:
 | `env`                             | set `DEV` for output any errors only to console. Otherwise unhandled errors will be sended to tg admin chat                                                                                                                                                                                                                                                                                                                     | 
 
 2. `npm install`
-3. `pm2 start ecosystem.config.js` (see: https://pm2.keymetrics.io/docs/usage/quick-start)
+3. `pm2 start ecosystem.config.cjs` (see: https://pm2.keymetrics.io/docs/usage/quick-start)

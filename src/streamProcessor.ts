@@ -76,7 +76,7 @@ export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
             trigger: `notify ${stream.name} (dead)`,
         });
 
-        if (config.recorder.includes(stream.name)) {
+        if (config.recorder.includes(stream.name.toLowerCase())) {
             logger.info(`postProcess: toStopRecord -- ${stream.name}`);
             toStopRecord.push(stream);
         }

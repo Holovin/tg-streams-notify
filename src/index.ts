@@ -128,7 +128,9 @@ class App {
 
         const callbackGetRe = async () => {
             logger.info(`get_re [callback]`);
-            return this.recorder.getActiveRecordings();
+
+            const state = await Recorder.getFreeSpace();
+            return [`*Disk space*` + escapeMarkdown(`: ${state.freeAvailableG}`), this.recorder.getActiveRecordings()];
         }
 
         await this.db.init(config.streamers.twitch.streamerNames);

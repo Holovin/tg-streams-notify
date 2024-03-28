@@ -7,6 +7,8 @@
 - fix: rare crashes with undefined duration values
 - DX: move project to ESM
 - fix: rename pm2 ecosystem file for ESM support
+- feat: `/get_re` return active streams & free space
+- fix: remove ended streams properly
 
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)

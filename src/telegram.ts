@@ -20,7 +20,7 @@ export class Telegram {
 
     public async initBot(
         dbSetFunction: (key: string, value: string) => Promise<true>,
-        getReFunction: () => Promise<StreamRecord[]>,
+        getReFunction: () => Promise<[string, StreamRecord[]]>,
         ) {
         this.bot.command('get_pin', async ctx => {
             const chatId = ctx?.message?.chat?.id;
@@ -53,15 +53,14 @@ export class Telegram {
                 return;
             }
 
-            const recordings = await getReFunction();
-
+            const [state, recordings] = await getReFunction();
             const message = recordings.map((record, index) => {
                 return escapeMarkdown(`${index + 1}. ${record.url} • from: ${format(record.startTime, 'yyyy-MM-dd HH:mm:ss')}`);
             }).join('\n');
 
             const msg = await this.bot.api.sendMessage(
                 chatId,
-                message || 'There is no active recordings',
+                (message || 'There is no active recordings') + `\n${state}`,
                 { ...tgBaseOptions as any }
             );
         });

@@ -5,7 +5,7 @@ import { logger } from './logger.js';
 import { Database } from './db.js';
 import { Twitch } from './twitch.js';
 import { Telegram } from './telegram.js';
-import { getChannelDisplayName, getChannelPhoto, getShortStatus, getStreamLink } from './text.js';
+import { formatRecordings, getChannelDisplayName, getChannelPhoto, getShortStatus, getStreamLink } from './text.js';
 import { config } from './config.js';
 import { postProcess } from './streamProcessor.js';
 import { Recorder } from './recorder.js';
@@ -51,12 +51,12 @@ class App {
             const online = await this.taskCheckOnline();
 
             logger.debug( `tick: stateProcess, (${new Date()}), state: ${this.state.length} `);
-            this.state = await this.stateProcess(this.state, online);
+            this.state = await this.stateHandler(this.state, online);
 
             logger.debug( `tick: checkBansTwitch, (${new Date()}), state: ${this.state.length}`);
             await this.taskCheckBansTwitch();
 
-            if (config.recorder.length > 0) {
+            if (this.recorder.getActiveRecordings().length > 0) {
                 logger.debug( `tick: checkDiskState, (${new Date()})`);
                 const notifications = await this.checkDiskState();
                 if (notifications.length > 0) {
@@ -98,7 +98,7 @@ class App {
 
         banned.forEach(user => {
             notifications.push({
-                message: `*${getChannelDisplayName(config.streamers.twitch.streamers, user)}* is banned\\!`,
+                message: `*${getChannelDisplayName(config.streamers.twitch.streamers, Twitch.normalizeStreamerLogin(user), user)}* is banned\\!`,
                 photo: getChannelPhoto(config.streamers, null, EventType.banned),
                 trigger: 'banned (new)',
             });
@@ -106,7 +106,7 @@ class App {
 
         unbanned.forEach(user => {
             notifications.push({
-                message: `*${getChannelDisplayName(config.streamers.twitch.streamers, user)}* is unbanned\\!`,
+                message: `*${getChannelDisplayName(config.streamers.twitch.streamers, Twitch.normalizeStreamerLogin(user), user)}* is unbanned\\!`,
                 photo: getChannelPhoto(config.streamers, null, EventType.unbanned),
                 trigger: 'unbanned (new)',
             });
@@ -137,7 +137,7 @@ class App {
         await this.bot.initBot(callbackGetPin, callbackGetRe);
     }
 
-    private async stateProcess(state, online) {
+    private async stateHandler(state, online) {
         const data = postProcess(state, online);
 
         if (data.notifications.length > 0) {
@@ -158,9 +158,9 @@ class App {
             logger.info(`stateProcess: stop queue -- ${data.toStopRecord.length}`);
 
             for (const rec of data.toStopRecord) {
-                this.recorder.stopByUrl(rec.name);
+                this.recorder.stopByUrl(rec.loginNormalized);
                 notifications.push({
-                    message: `🕵️ *Stop recording* ` + escapeMarkdown(`-- ${rec.name}`),
+                    message: `🕵️ *Stop recording* ` + escapeMarkdown(`-- ${rec.loginNormalized}`),
                     trigger: 'recorder+stop',
                 });
             }
@@ -173,9 +173,9 @@ class App {
             logger.info(`stateProcess: start queue -- ${data.toStartRecord.length}`);
 
             for (const rec of data.toStartRecord) {
-                await this.recorder.add(getStreamLink(rec), rec.name);
+                await this.recorder.add(getStreamLink(rec), rec.loginNormalized);
                 notifications.push({
-                    message: `🕵️ *Start recording* ` + escapeMarkdown(`-- ${rec.name}`),
+                    message: `🕵️ *Start recording* ` + escapeMarkdown(`-- ${rec.loginNormalized}`),
                     trigger: 'recorder+add'
                 });
             }
@@ -196,20 +196,22 @@ class App {
             }];
         }
 
-        if (freeSpace.freeAvailableG < 7) {
+        const messageRecordings = formatRecordings(this.recorder.getActiveRecordings());
+        const diff = Date.now() - this.lastRecorderNotification;
+        const HOUR_QUARTER = 60 * 15 * 1000;
+        if (diff > HOUR_QUARTER && freeSpace.freeAvailableG < 7) {
             this.updateLastRN();
             return [{
-                message: `🧯 *LOW DISK SPACE (<7)*` + escapeMarkdown(`: ${freeSpace.freeAvailableG}`),
+                message: `🧯 *LOW DISK SPACE (<7)*` + escapeMarkdown(`: ${freeSpace.freeAvailableG}\n${messageRecordings}`),
                 trigger: `checkDiskState <7`
             }];
         }
 
         const HOUR = 60 * 60 * 1000;
-        const diff = Date.now() - this.lastRecorderNotification;
         if (diff > HOUR) {
             this.updateLastRN();
             return [{
-                message: `💁 *Disk space state*` + escapeMarkdown(`: ${freeSpace.freeAvailableG}`),
+                message: `💁 *Disk space state*` + escapeMarkdown(`: ${freeSpace.freeAvailableG}\n${messageRecordings}`),
                 trigger: `checkDiskState OK`,
             }];
         }

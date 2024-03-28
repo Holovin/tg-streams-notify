@@ -2,7 +2,7 @@
 Telegram bot that can send notifications of current twitch streams to telegram chat. 
 
 ## Setup & running
-1. Tested on NodeJS v18-20
+1. Tested on Node.js v18-20
 1. Create `config.json` in project root folder
 ```
 {
@@ -48,7 +48,7 @@ Example of config, values:
 | `defaultChannelValues`            | default telegram `file_id` values for images for some event messages (not required, in previous versions this config section was as `_` user)                                                                                                                                                                                                                                                                                   |
 | `timeout`                         | minimal amount of seconds between API calls                                                                                                                                                                                                                                                                                                                                                                                     |
 | `heartbeat`                       | [optional] url for healthcheck (app will HTTP/GET this url every check iteration (~timeout)                                                                                                                                                                                                                                                                                                                                     |
-| `env`                             | set `DEV` for output any errors only to console. Otherwise unhandled errors will be sended to tg admin chat                                                                                                                                                                                                                                                                                                                     | 
+| `env`                             | set `DEV` for output any errors only to console. Otherwise unhandled errors will be sent to tg admin chat                                                                                                                                                                                                                                                                                                                       | 
 
 2. `npm install`
 3. `pm2 start ecosystem.config.cjs` (see: https://pm2.keymetrics.io/docs/usage/quick-start)

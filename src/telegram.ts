@@ -7,6 +7,7 @@ import { escapeMarkdown, sleep } from './helpers.js';
 import { Database } from './db.js';
 import { StreamRecord } from './recorder.js';
 import { format } from 'date-fns/format';
+import { formatRecordings } from './text.js';
 
 
 export class Telegram {
@@ -54,11 +55,9 @@ export class Telegram {
             }
 
             const [state, recordings] = await getReFunction();
-            const message = recordings.map((record, index) => {
-                return escapeMarkdown(`${index + 1}. ${record.url} • from: ${format(record.startTime, 'yyyy-MM-dd HH:mm:ss')}`);
-            }).join('\n');
+            const message = formatRecordings(recordings);
 
-            const msg = await this.bot.api.sendMessage(
+            await this.bot.api.sendMessage(
                 chatId,
                 (message || 'There is no active recordings') + `\n${state}`,
                 { ...tgBaseOptions as any }

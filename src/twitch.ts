@@ -62,7 +62,8 @@ export class Twitch {
 
             const stream: OnlineStream = {
                 title: escapeMarkdown(streamInfo.title ?? ''),
-                name: escapeMarkdown(streamInfo.user_name ?? ''),
+                login: escapeMarkdown(streamInfo.user_name ?? ''),
+                loginNormalized: escapeMarkdown(Twitch.normalizeStreamerLogin(streamInfo.user_name) ?? ''),
                 game: escapeMarkdown(streamInfo.game_name ?? ''),
                 duration: `${duration.hours.toString().padStart(2, '0')}:${duration.minutes.toString().padStart(2, '0')}`,
                 hours: duration.hours ?? -1,
@@ -70,7 +71,7 @@ export class Twitch {
             };
             online.push(stream);
 
-            logger.debug(`pullTwitchStreamers: live -- ${stream.name}`);
+            logger.debug(`pullTwitchStreamers: live -- ${stream.loginNormalized}`);
         });
 
         logger.debug(`pullTwitchStreamers: return -- ${JSON.stringify(online)}`);
@@ -81,7 +82,7 @@ export class Twitch {
         try {
             const response = await this.tv.getUsers(channelNames);
             const channelsAlive = response.data.map(channel => ({
-                name: channel.login.toLowerCase(),
+                name: Twitch.normalizeStreamerLogin(channel.login),
                 displayName: channel.display_name,
             }));
 
@@ -91,5 +92,9 @@ export class Twitch {
         } catch (e) {
             return null;
         }
+    }
+
+    public static normalizeStreamerLogin(login: string): string {
+        return login.toLowerCase().replace('\\', '');
     }
 }

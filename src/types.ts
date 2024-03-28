@@ -15,7 +15,8 @@ export enum PlatformType {
 
 export interface OnlineStream {
     title: string;
-    name: string;
+    login: string;
+    loginNormalized: string;
     game: string;
     duration: string;
     hours: number;

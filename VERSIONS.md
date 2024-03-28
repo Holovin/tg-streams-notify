@@ -6,9 +6,11 @@
 - fix: `/get_pin` was unprotected (now only for admin)
 - fix: rare crashes with undefined duration values
 - DX: move project to ESM
-- fix: rename pm2 ecosystem file for ESM support
-- feat: `/get_re` return active streams & free space
-- fix: remove ended streams properly
+- b/fix: rename pm2 ecosystem file for ESM support
+- c/feat: `/get_re` return active streams & free space
+- c/fix: remove ended streams properly
+- e/DX: normalize stream login property for prevent future comparison errors
+- e/fix: auto-message frequency fixes
 
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)

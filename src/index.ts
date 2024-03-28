@@ -202,7 +202,9 @@ class App {
         if (diff > HOUR_QUARTER && freeSpace.freeAvailableG < 7) {
             this.updateLastRN();
             return [{
-                message: `🧯 *LOW DISK SPACE (<7)*` + escapeMarkdown(`: ${freeSpace.freeAvailableG}\n${messageRecordings}`),
+                message: `🧯 *LOW DISK SPACE (<7)*`
+                    + escapeMarkdown(`: ${freeSpace.freeAvailableG}`)
+                    + `\n\n${messageRecordings}`,
                 trigger: `checkDiskState <7`
             }];
         }
@@ -211,7 +213,9 @@ class App {
         if (diff > HOUR) {
             this.updateLastRN();
             return [{
-                message: `💁 *Disk space state*` + escapeMarkdown(`: ${freeSpace.freeAvailableG}\n${messageRecordings}`),
+                message: `💁 *Disk space state*`
+                    + escapeMarkdown(`: ${freeSpace.freeAvailableG}`)
+                    + `\n\n${messageRecordings}`,
                 trigger: `checkDiskState OK`,
             }];
         }

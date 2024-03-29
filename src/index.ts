@@ -158,7 +158,7 @@ class App {
             logger.info(`stateProcess: stop queue -- ${data.toStopRecord.length}`);
 
             for (const rec of data.toStopRecord) {
-                this.recorder.stopByUrl(rec.loginNormalized);
+                this.recorder.stopByUrl(getStreamLink(rec));
                 notifications.push({
                     message: `🕵️ *Stop recording* ` + escapeMarkdown(`-- ${rec.loginNormalized}`),
                     trigger: 'recorder+stop',

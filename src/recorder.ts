@@ -82,10 +82,14 @@ export class Recorder {
     }
 
     private stop(record: StreamRecord): boolean {
-        const result = record.pid.kill();
-        logger.info(`Recorder: ${result ? '[+]' : '[-]'} stop -- ${record.url}`);
+        if (!record.pid.exitCode) {
+            logger.info(`Recorder: finished without errors -- ${record.url}`);
+        }
 
-        this.activeRecordings = this.activeRecordings.filter(rec => rec.url === record.url);
+        const result = record.pid.kill();
+        logger.info(`Recorder: ${result ? '[+]' : '[-]'} stop -- ${record.url}, exitCode = ${record.pid.exitCode ?? -1}`);
+
+        this.activeRecordings = this.activeRecordings.filter(rec => rec.url !== record.url);
         logger.info(`Recorder: activeSize after removal -- ${this.activeRecordings.length}`);
         return result;
     }

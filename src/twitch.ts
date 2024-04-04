@@ -1,6 +1,5 @@
 import { intervalToDuration } from 'date-fns/intervalToDuration';
 import { OnlineStream, PlatformType, UserInfo } from './types.js';
-import { escapeMarkdown } from './helpers.js';
 import { logger } from './logger.js';
 import { TwitchApi } from 'node-twitch';
 
@@ -61,10 +60,10 @@ export class Twitch {
             }
 
             const stream: OnlineStream = {
-                title: escapeMarkdown(streamInfo.title ?? ''),
-                login: escapeMarkdown(streamInfo.user_name ?? ''),
-                loginNormalized: escapeMarkdown(Twitch.normalizeStreamerLogin(streamInfo.user_name) ?? ''),
-                game: escapeMarkdown(streamInfo.game_name ?? ''),
+                title: streamInfo.title ?? '',
+                login: streamInfo.user_name ?? '',
+                loginNormalized: Twitch.normalizeStreamerLogin(streamInfo.user_name) ?? '',
+                game: streamInfo.game_name ?? '',
                 duration: `${duration.hours.toString().padStart(2, '0')}:${duration.minutes.toString().padStart(2, '0')}`,
                 hours: duration.hours ?? -1,
                 platform: PlatformType.TWITCH,

@@ -1,14 +1,19 @@
 import axios from 'axios';
-import { escapeMarkdown, getArrDiff, sleep } from './helpers.js';
+import { getArrDiff, sleep } from './helpers.js';
 import { EventType, Notification, OnlineStream } from './types.js';
 import { logger } from './logger.js';
 import { Database } from './db.js';
 import { Twitch } from './twitch.js';
 import { Telegram } from './telegram.js';
-import { formatRecordings, getChannelDisplayName, getChannelPhoto, getShortStatus, getStreamLink } from './text.js';
 import { config } from './config.js';
-import { postProcess } from './streamProcessor.js';
+import { getStreamLink, postProcess } from './streamProcessor.js';
 import { Recorder } from './recorder.js';
+import { L_DiskState, L_RecordState, TgMsg } from './telegramMsg.js';
+import {
+    CHECK_DISK_ALERT_AFTER_MINUTES,
+    CHECK_DISK_WARN_GB_LOW_ALERT_REPEAT_MINUTES,
+    CHECK_DISK_WARN_GB_LOW_THRESHOLD,
+} from './const.js';
 
 logger.info(`== SQD StreamNotify config ==` +
     `\nStarted, settings:\n` +
@@ -16,7 +21,7 @@ logger.info(`== SQD StreamNotify config ==` +
     `- chatId: ${config.tg.chatId}\n` +
     `- adminId: ${config.tg.adminId}\n` +
     `- timeout: ${config.timeout}\n` +
-    `- heartbeat: ${config.heatbeatUrl}\n`
+    `- heartbeat: ${config.heartbeatUrl}\n`
 );
 
 class App {
@@ -41,10 +46,11 @@ class App {
             logger.warn('Bot died somehow...');
         });
 
+        // noinspection InfiniteLoopJS
         while (true) {
-            if (config.heatbeatUrl) {
+            if (config.heartbeatUrl) {
                 logger.debug( `tick: heartbeat...`);
-                await axios.get(config.heatbeatUrl);
+                await axios.get(config.heartbeatUrl);
             }
 
             logger.debug( `tick: checkOnline, (${new Date()}), state: ${this.state.length}`);
@@ -67,6 +73,11 @@ class App {
             logger.debug( `tick: loop done, (${new Date()})`);
             await sleep(config.timeout);
         }
+    }
+
+    public async beforeCrash() {
+        logger.warn(`beforeCrash: Try to warn`);
+        return this.bot.sendMessageMd(config.tg.adminId, TgMsg.beforeCrash());
     }
 
     private async taskCheckOnline(): Promise<OnlineStream[]> {
@@ -98,16 +109,22 @@ class App {
 
         banned.forEach(user => {
             notifications.push({
-                message: `*${getChannelDisplayName(config.streamers.twitch.streamers, Twitch.normalizeStreamerLogin(user), user)}* is banned\\!`,
-                photo: getChannelPhoto(config.streamers, null, EventType.banned),
+                message: TgMsg.userBanned(
+                    TgMsg.getChannelDisplayName(
+                        config.streamers.twitch.streamers, Twitch.normalizeStreamerLogin(user), user),
+                ),
+                photo: TgMsg.getChannelPhoto(config.streamers, null, EventType.banned),
                 trigger: 'banned (new)',
             });
         });
 
         unbanned.forEach(user => {
             notifications.push({
-                message: `*${getChannelDisplayName(config.streamers.twitch.streamers, Twitch.normalizeStreamerLogin(user), user)}* is unbanned\\!`,
-                photo: getChannelPhoto(config.streamers, null, EventType.unbanned),
+                message: TgMsg.userUnbanned(
+                    TgMsg.getChannelDisplayName(
+                        config.streamers.twitch.streamers, Twitch.normalizeStreamerLogin(user), user),
+                ),
+                photo: TgMsg.getChannelPhoto(config.streamers, null, EventType.unbanned),
                 trigger: 'unbanned (new)',
             });
         });
@@ -121,31 +138,32 @@ class App {
 
     private async init() {
         const callbackGetPin = async (key: string, value: string) => {
-            logger.info(`get_pin [callback]: reset current state`);
+            logger.info(`pin [callback]: reset current state`);
             this.state = [];
             return this.db.set(key, value);
         };
 
         const callbackGetRe = async () => {
-            logger.info(`get_re [callback]`);
-
+            logger.info(`re [callback]`);
             const state = await Recorder.getFreeSpace();
-            return [`*Disk space*` + escapeMarkdown(`: ${state.freeAvailableG}`), this.recorder.getActiveRecordings()];
+            return TgMsg.diskState(L_DiskState.OK, state.freeAvailableG, this.recorder.getActiveRecordings());
         }
 
         await this.db.init(config.streamers.twitch.streamerNames);
-        await this.bot.initBot(callbackGetPin, callbackGetRe);
+        await this.bot.initBot({
+            dbSetFunction: callbackGetPin,
+            getReFunction: callbackGetRe,
+        });
     }
 
     private async stateHandler(state, online) {
         const data = postProcess(state, online);
-
         if (data.notifications.length > 0) {
             await this.bot.sendNotifications(config.tg.chatId, data.notifications);
 
             const msgID = await this.db.get(Database.getChatIdKey(config.tg.chatId));
             if (msgID) {
-                const isDone = await this.bot.updatePin(config.tg.chatId, msgID, getShortStatus(online));
+                const isDone = await this.bot.updatePin(config.tg.chatId, msgID, TgMsg.getShortStatus(online));
                 if (!isDone) {
                     await this.db.delete(Database.getChatIdKey(config.tg.chatId));
                     logger.info(`checkOnline: chatID = ${config.tg.chatId} removed from DB`);
@@ -158,9 +176,9 @@ class App {
             logger.info(`stateProcess: stop queue -- ${data.toStopRecord.length}`);
 
             for (const rec of data.toStopRecord) {
-                this.recorder.stopByUrl(getStreamLink(rec));
+                const result = this.recorder.stopByUrl(getStreamLink(rec));
                 notifications.push({
-                    message: `🕵️ *Stop recording* ` + escapeMarkdown(`-- ${rec.loginNormalized}`),
+                    message: TgMsg.recorderInfo(L_RecordState.END, rec.loginNormalized, result),
                     trigger: 'recorder+stop',
                 });
             }
@@ -175,7 +193,7 @@ class App {
             for (const rec of data.toStartRecord) {
                 await this.recorder.add(getStreamLink(rec), rec.loginNormalized);
                 notifications.push({
-                    message: `🕵️ *Start recording* ` + escapeMarkdown(`-- ${rec.loginNormalized}`),
+                    message: TgMsg.recorderInfo(L_RecordState.START, rec.loginNormalized),
                     trigger: 'recorder+add'
                 });
             }
@@ -191,31 +209,26 @@ class App {
         if (!freeSpace) {
             logger.error(`checkDiskState: no response!`);
             return [{
-                message: `🧯 *checkDiskState error\\!*`,
+                message: TgMsg.diskState(L_DiskState.ERROR, 0, this.recorder.getActiveRecordings()),
                 trigger: `checkDiskState ERR`,
             }];
         }
 
-        const messageRecordings = formatRecordings(this.recorder.getActiveRecordings());
         const diff = Date.now() - this.lastRecorderNotification;
-        const HOUR_QUARTER = 60 * 15 * 1000;
-        if (diff > HOUR_QUARTER && freeSpace.freeAvailableG < 7) {
+        if (diff > CHECK_DISK_WARN_GB_LOW_ALERT_REPEAT_MINUTES
+            && freeSpace.freeAvailableG < CHECK_DISK_WARN_GB_LOW_THRESHOLD
+        ) {
             this.updateLastRN();
             return [{
-                message: `🧯 *LOW DISK SPACE (<7)*`
-                    + escapeMarkdown(`: ${freeSpace.freeAvailableG}`)
-                    + `\n\n${messageRecordings}`,
-                trigger: `checkDiskState <7`
+                message: TgMsg.diskState(L_DiskState.WARN, freeSpace.freeAvailableG, this.recorder.getActiveRecordings()),
+                trigger: `checkDiskState <${CHECK_DISK_WARN_GB_LOW_THRESHOLD}`
             }];
         }
 
-        const HOUR = 60 * 60 * 1000;
-        if (diff > HOUR) {
+        if (diff > CHECK_DISK_ALERT_AFTER_MINUTES) {
             this.updateLastRN();
             return [{
-                message: `💁 *Disk space state*`
-                    + escapeMarkdown(`: ${freeSpace.freeAvailableG}`)
-                    + `\n\n${messageRecordings}`,
+                message: TgMsg.diskState(L_DiskState.OK, freeSpace.freeAvailableG, this.recorder.getActiveRecordings()),
                 trigger: `checkDiskState OK`,
             }];
         }
@@ -228,11 +241,9 @@ class App {
     }
 }
 
+const app = new App();
 try {
-    const app = new App();
-    app
-        .main()
-        .then(() => {});
+    app.main().then();
 
 } catch (e: unknown) {
     logger.info(JSON.stringify(e));
@@ -240,4 +251,7 @@ try {
     if (e instanceof Error) {
         logger.error(`GGWP: ${e.message}`);
     }
+
+    app.beforeCrash().then();
+    logger.error(`Crashed...`);
 }

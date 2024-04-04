@@ -42,7 +42,9 @@ export class Database {
         const result2 = await this.get('test');
 
         if (result1 === result2) {
-            logger.error('Something wrong with storage...');
+            const msg = 'Something wrong with storage...';
+            logger.error(msg);
+            throw Error(msg)
         }
 
         const users = await this.has(Database.DB_USERS);

@@ -1,7 +1,12 @@
-import { EventType, Notification, OnlineStream } from './types.js';
-import { getChannelPhoto, getStatus } from './text.js';
+import { EventType, Notification, OnlineStream, PlatformType } from './types.js';
 import { config } from './config.js';
 import { logger } from './logger.js';
+import { L_StreamState, TgMsg } from './telegramMsg.js';
+
+export function getStreamLink(stream: OnlineStream): string {
+    const baseDomain = stream.platform === PlatformType.TWITCH ? 'https://twitch.tv' : '';
+    return `${baseDomain}/${stream.loginNormalized}`;
+}
 
 export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
     notifications: Notification[],
@@ -16,13 +21,15 @@ export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
 
     // Check event: Start stream
     online.forEach((onlineStream, index) => {
-        const streamState = state.find(item => item.loginNormalized === onlineStream.loginNormalized);
+        const streamState = state.find(
+            item => item.loginNormalized === onlineStream.loginNormalized
+        );
 
-        // No in DB, need notification
+        // Not in DB, need notification
         if (!streamState) {
             notifications.push({
-                message: getStatus(`*${onlineStream.title}*`, onlineStream, true),
-                photo: getChannelPhoto(config.streamers, onlineStream, EventType.live),
+                message: TgMsg.streamInfo(onlineStream, L_StreamState.START),
+                photo: TgMsg.getChannelPhoto(config.streamers, onlineStream, EventType.live),
                 trigger: `new stream ${onlineStream.loginNormalized}, db dump: ${JSON.stringify(state)}`,
             });
             logger.info(`postProcess: notify ${onlineStream.loginNormalized} (new)`);
@@ -43,16 +50,16 @@ export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
                 logger.info(`postProcess: notify ${onlineStream.loginNormalized} (title), db index: ${index}`);
 
                 notifications.push({
-                    message: getStatus(`💬 *${onlineStream.title}*`, onlineStream, true),
-                    photo: getChannelPhoto(config.streamers, onlineStream, EventType.live),
+                    message: TgMsg.streamInfo(onlineStream, L_StreamState.START, '💬'),
+                    photo: TgMsg.getChannelPhoto(config.streamers, onlineStream, EventType.live),
                     trigger: `title update: ${onlineStream.title} !== ${streamState.title}`,
                 });
             } else if (onlineStream.game !== streamState.game) {
                 logger.info(`postProcess: notify ${onlineStream.loginNormalized} (game), db index: ${index}`);
 
                 notifications.push({
-                    message: getStatus(`🎮 *${onlineStream.title}* · ${onlineStream.game}`, onlineStream, true),
-                    photo: getChannelPhoto(config.streamers, onlineStream, EventType.live),
+                    message: TgMsg.streamInfo(onlineStream, L_StreamState.START, '🎮'),
+                    photo: TgMsg.getChannelPhoto(config.streamers, onlineStream, EventType.live),
                     trigger: `game update: ${onlineStream.game} !== ${streamState.game}`,
                 });
             }
@@ -64,15 +71,17 @@ export function postProcess(state: OnlineStream[], online: OnlineStream[]): {
     // Check event: end stream
     for (let i = state.length - 1; i >= 0; i--) {
         const stream = state[i];
-        const find = online.find(onlineItem => onlineItem.loginNormalized === stream.loginNormalized);
+        const find = online.find(
+            onlineItem => onlineItem.loginNormalized === stream.loginNormalized
+        );
         if (find) {
             continue;
         }
 
         logger.info(`postProcess: stream is dead -- ${stream.loginNormalized}`);
         notifications.push({
-            message: getStatus(`*${stream.title}*`, stream, false),
-            photo: getChannelPhoto(config.streamers, stream, EventType.off),
+            message: TgMsg.streamInfo(stream, L_StreamState.END),
+            photo: TgMsg.getChannelPhoto(config.streamers, stream, EventType.off),
             trigger: `notify ${stream.loginNormalized} (dead)`,
         });
 

@@ -1,0 +1,35 @@
+{
+  "env": "DEV",
+  "recorder": [""],
+
+  "telegram": {
+    "admin": 0,
+    "chat":  -0,
+    "token": "0:A"
+  },
+
+  "defaultChannelValues": {
+    "displayName": "DEFAULT VALUE FOR ANY STREAM",
+    "photoLive": "TG_FILE_ID",
+    "photoOff":  "TG_FILE_ID",
+    "banned":    "TG_FILE_ID",
+    "unbanned":  "TG_FILE_ID"
+  },
+
+  "twitch": {
+    "id":     "TOKEN_ID",
+    "secret": "TOKEN_SECRET",
+
+    "channels": {
+      "example": {
+        "displayName": "Example channel",
+        "photoLive":   "TG_FILE_ID",
+        "photoOff":    "TG_FILE_ID"
+      },
+
+      "example_2": { }
+    }
+  },
+
+  "timeout": 60
+}

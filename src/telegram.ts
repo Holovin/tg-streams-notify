@@ -3,12 +3,19 @@ import { Bot } from 'grammy';
 import { Notification } from './types.js';
 import { config } from './config.js';
 import { logger } from './logger.js';
-import { escapeMarkdown, sleep } from './helpers.js';
+import { sleep } from './helpers.js';
 import { Database } from './db.js';
-import { StreamRecord } from './recorder.js';
-import { format } from 'date-fns/format';
-import { formatRecordings } from './text.js';
+import { TG_CMD, TgMsg } from './telegramMsg.js';
+import {
+    PIN_MESSAGE_UPDATE_FIRST_DELAY_SECONDS,
+    SEND_MESSAGE_DELAY_AFTER_SECONDS
+} from './const.js';
 
+
+export interface TgBotCallbacks {
+    dbSetFunction: (key: string, value: string) => Promise<true>,
+    getReFunction: () => Promise<string>,
+}
 
 export class Telegram {
     private bot = new Bot(config.tg.token);
@@ -19,49 +26,32 @@ export class Telegram {
         logger.info(`[TelegramAPI] token = [...${token.slice(-5)}]`);
     }
 
-    public async initBot(
-        dbSetFunction: (key: string, value: string) => Promise<true>,
-        getReFunction: () => Promise<[string, StreamRecord[]]>,
-        ) {
-        this.bot.command('get_pin', async ctx => {
+    public async initBot(botCallbacks: TgBotCallbacks) {
+        this.bot.command(TG_CMD.PIN, async ctx => {
             const chatId = ctx?.message?.chat?.id;
             if (!chatId || chatId !== config.tg.adminId) {
-                logger.debug(`get_pin: skip message from chat -- ${chatId}`);
+                logger.debug(`pin: skip message from chat -- ${chatId}`);
                 return;
             }
 
-            const msg = await this.bot.api.sendMessage(
-                chatId,
-                escapeMarkdown(`Loading messageID...`),
-                { ...tgBaseOptions as any }
-            );
-            await dbSetFunction(Database.getChatIdKey(chatId), msg.message_id.toString());
-            logger.info(`get_pin: db updated`);
+            const msg = await this.sendMessageMd(chatId, TgMsg.pinLoading());
+            await botCallbacks.dbSetFunction(Database.getChatIdKey(chatId), msg.message_id.toString());
+            logger.info(`pin: db updated`);
 
-            await sleep(2);
-            await this.updatePin(
-                chatId,
-                msg.message_id,
-                escapeMarkdown(`Now this message will be update every minute (${msg.message_id})`)
-            );
-            logger.info(`get_pin: messageID -- ${msg.message_id}`);
+            await sleep(PIN_MESSAGE_UPDATE_FIRST_DELAY_SECONDS);
+            await this.updatePin(chatId, msg.message_id, TgMsg.pinReady(msg.message_id));
+            logger.info(`pin: messageID -- ${msg.message_id}`);
         });
 
-        this.bot.command('get_re',  async (ctx) => {
+        this.bot.command(TG_CMD.RECORDER,  async (ctx) => {
             const chatId = ctx?.message?.chat?.id;
             if (!chatId || chatId !== config.tg.adminId) {
-                logger.debug(`get_pin: skip message from chat -- ${chatId}`);
+                logger.debug(`pin: skip message from chat -- ${chatId}`);
                 return;
             }
 
-            const [state, recordings] = await getReFunction();
-            const message = formatRecordings(recordings);
-
-            await this.bot.api.sendMessage(
-                chatId,
-                (message || 'There is no active recordings') + `\n${state}`,
-                { ...tgBaseOptions as any }
-            );
+            const message= await botCallbacks.getReFunction();
+            await this.sendMessageMd(chatId, message);
         });
     }
 
@@ -78,12 +68,16 @@ export class Telegram {
                 );
 
             } else {
-                await this.bot.api.sendMessage(chatId, notification.message, { ...tgBaseOptions as any });
+                await this.sendMessageMd(chatId, notification.message);
             }
 
             logger.info(`sendNotifications: send -- ${chatId}, ${notification.message}`);
-            await sleep(5);
+            await sleep(SEND_MESSAGE_DELAY_AFTER_SECONDS);
         }
+    }
+
+    public async sendMessageMd(chatId: number, message: string) {
+        return this.bot.api.sendMessage(chatId, message, { ...tgBaseOptions as any });
     }
 
     public async updatePin(chatId: number, msgId: number, message: string): Promise<boolean> {
@@ -115,7 +109,6 @@ export class Telegram {
     public async start() {
         return this.bot.start();
     }
-
 }
 
 const tgBaseOptions = {

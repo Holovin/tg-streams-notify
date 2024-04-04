@@ -25,7 +25,6 @@ Telegram bot that can send notifications of current twitch streams to telegram c
     },
   },
   "defaultChannelValues": {
-    "displayName": "DEFAULT VALUE FOR ANY STREAM",
     "photoLive": "TG_PHOTO_ID_STRING",
     "photoOff": "TG_PHOTO_ID_STRING",
     "banned": "TG_PHOTO_ID_STRING",

@@ -26,7 +26,7 @@ export interface Config {
     recorder: string[];
     timeout: number;
     streamers: Streamers;
-    heatbeatUrl: string;
+    heartbeatUrl: string;
 }
 
 const nconfig = nconf.env().file({ file: 'config.json' });
@@ -44,9 +44,9 @@ export const config: Config = {
     },
 
     env: nconfig.get('env'),
-    recorder: nconfig.get('recorder'),
+    recorder: nconfig.get('recorder') ?? [],
     streamers: readStreamersConfig(),
-    heatbeatUrl: nconfig.get('heartbeat'),
+    heartbeatUrl: nconfig.get('heartbeat'),
     timeout: nconfig.get('timeout')
 }
 

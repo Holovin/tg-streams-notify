@@ -91,6 +91,12 @@ export class Recorder {
 
         this.activeRecordings = this.activeRecordings.filter(rec => rec.url !== record.url);
         logger.info(`Recorder: activeSize after removal -- ${this.activeRecordings.length}`);
+
+        // Already killed
+        if (record.pid.exitCode) {
+            return true;
+        }
+
         return result;
     }
 

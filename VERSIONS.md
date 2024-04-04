@@ -12,6 +12,8 @@
 - e/DX: normalize stream login property for prevent future comparison errors
 - e/fix: auto-message frequency fixes
 - 7/fix: fix stop command, add exit code output
+- 8/DX: move all text of messages to functions for prevent md errors
+- 8/fix: fix empty recorder config error
 
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)

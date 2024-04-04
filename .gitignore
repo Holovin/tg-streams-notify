@@ -104,6 +104,7 @@ dist
 .tern-port
 
 # dd
+TODO.md
 .idea/
 config*.json
 .DS_Store

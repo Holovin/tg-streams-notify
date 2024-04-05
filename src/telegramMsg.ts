@@ -90,8 +90,8 @@ export class TgMsg {
         const streamUrl = this.getStreamMarkdownLink(
             stream, `[Open stream on ${platformInfo[stream.platform].label} ↗]`);
 
-        return `${extraPreTitle}${extraPreTitle || ' '}${streamName} ${lng[0]} live ` +
-            `${duration}${lng[1]}\n` +
+        return `${extraPreTitle}${extraPreTitle || ' '}${streamName} ${lng[1]} live ` +
+            `${duration}${lng[0]}\n` +
             `*${this.escMd(stream.title)}* · ${this.escMd(stream.game)}\n\n` +
             streamUrl;
     }

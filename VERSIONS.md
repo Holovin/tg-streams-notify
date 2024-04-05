@@ -14,6 +14,7 @@
 - 7/fix: fix stop command, add exit code output
 - 8/DX: move all text of messages to functions for prevent md errors
 - 8/fix: fix empty recorder config error
+- 9/fix: fix typo in tgmsg
 
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)

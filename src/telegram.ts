@@ -63,7 +63,7 @@ export class Telegram {
             }
 
             const data = await botCallbacks.getPinInfo();
-            await this.updatePin(config.tg.chatId, data.msgId, TgMsg.getShortStatus(data.online ?? []));
+            await this.updatePin(config.tg.chatId, data.msgId, TgMsg.getShortStatus(data.online));
         });
 
     }

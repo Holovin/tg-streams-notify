@@ -177,8 +177,9 @@ class App {
             if (msgID) {
                 const isDone = await this.bot.updatePin(config.tg.chatId, msgID, TgMsg.getShortStatus(online));
                 if (!isDone) {
-                    await this.db.delete(Database.getChatIdKey(config.tg.chatId));
-                    logger.info(`checkOnline: chatID = ${config.tg.chatId} removed from DB`);
+                    // TODO: rework
+                    // await this.db.delete(Database.getChatIdKey(config.tg.chatId));
+                    logger.info(`checkOnline: chatID = ${config.tg.chatId} MAYBE SHOULD BE removed from DB`);
                 }
             }
         }

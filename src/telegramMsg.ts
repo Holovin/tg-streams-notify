@@ -71,7 +71,11 @@ export class TgMsg {
             [L_RecordState.END]:   ['💁', 'End'],
         })[state];
 
-        return `${lng[0]} *${lng[1]} recording* ` + this.escMd(`-- ${url}`);
+        return `${lng[0]} *${lng[1]} recording* ` + this.escMd(`-- ${url}`)
+            + (state === L_RecordState.END)
+                ? (isOk ? 'Stopped ok' : 'Not stopped!')
+                : ''
+        ;
     }
 
     public static getChannelDisplayName(channels: Channels, loginNormalized: string, login: string) {
@@ -112,7 +116,7 @@ export class TgMsg {
         message += ` ${streams.length} online`;
 
         streams.forEach(stream => {
-            message += `\n· ${this.getStreamMarkdownLink(stream)} *${stream.title}*`;
+            message += `\n· ${this.getStreamMarkdownLink(stream)} *${this.escMd(stream.title)}*`;
         });
 
         return message;
@@ -150,23 +154,23 @@ export class TgMsg {
 
     private static escMd(message: string): string {
         return message
-            .replace(/\_/g, '\\_')
+            .replace(/_/g, '\\_')
             .replace(/\*/g, '\\*')
             .replace(/\[/g, '\\[')
-            .replace(/\]/g, '\\]')
+            .replace(/]/g, '\\]')
             .replace(/\(/g, '\\(')
             .replace(/\)/g, '\\)')
-            .replace(/\~/g, '\\~')
-            .replace(/\`/g, '\\`')
-            .replace(/\>/g, '\\>')
-            .replace(/\#/g, '\\#')
+            .replace(/~/g, '\\~')
+            .replace(/`/g, '\\`')
+            .replace(/>/g, '\\>')
+            .replace(/#/g, '\\#')
             .replace(/\+/g, '\\+')
-            .replace(/\-/g, '\\-')
-            .replace(/\=/g, '\\=')
+            .replace(/-/g, '\\-')
+            .replace(/=/g, '\\=')
             .replace(/\|/g, '\\|')
             .replace(/\{/g, '\\{')
-            .replace(/\}/g, '\\}')
+            .replace(/}/g, '\\}')
             .replace(/\./g, '\\.')
-            .replace(/\!/g, '\\!');
+            .replace(/!/g, '\\!');
     }
 }

@@ -156,7 +156,7 @@ class App {
         });
     }
 
-    private async stateHandler(state, online) {
+    private async stateHandler(state: OnlineStream[], online: OnlineStream[]): Promise<OnlineStream[]> {
         const data = postProcess(state, online);
         if (data.notifications.length > 0) {
             await this.bot.sendNotifications(config.tg.chatId, data.notifications);
@@ -214,7 +214,7 @@ class App {
             }];
         }
 
-        const diff = Date.now() - this.lastRecorderNotification;
+        const diff = Date.now() - this.lastRecorderNotification.getTime();
         if (diff > CHECK_DISK_WARN_GB_LOW_ALERT_REPEAT_MINUTES
             && freeSpace.freeAvailableG < CHECK_DISK_WARN_GB_LOW_THRESHOLD
         ) {

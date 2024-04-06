@@ -149,10 +149,22 @@ class App {
             return TgMsg.diskState(L_DiskState.OK, state.freeAvailableG, this.recorder.getActiveRecordings());
         }
 
+        const callbackGetPinInfo = async () => {
+            logger.info(`getPinInfo [callback]`);
+
+            const msgID = await this.db.get(Database.getChatIdKey(config.tg.chatId));
+
+            return {
+                msgId: msgID,
+                online: this.state,
+            }
+        }
+
         await this.db.init(config.streamers.twitch.streamerNames);
         await this.bot.initBot({
             dbSetFunction: callbackGetPin,
             getReFunction: callbackGetRe,
+            getPinInfo: callbackGetPinInfo,
         });
     }
 

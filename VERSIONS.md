@@ -15,7 +15,8 @@
 - 8/DX: move all text of messages to functions for prevent md errors
 - 8/fix: fix empty recorder config error
 - 9+10/fix: fix typo in tgmsg
-- 11/fix: no escape-md in pin method for stream title 
+- 11/fix: no escape-md in pin method for stream title
+- 12/feat: pin force update command
 
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)

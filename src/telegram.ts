@@ -1,6 +1,6 @@
 import { GrammyError } from 'grammy';
 import { Bot } from 'grammy';
-import { Notification } from './types.js';
+import { Notification, OnlineStream } from './types.js';
 import { config } from './config.js';
 import { logger } from './logger.js';
 import { sleep } from './helpers.js';
@@ -13,8 +13,9 @@ import {
 
 
 export interface TgBotCallbacks {
-    dbSetFunction: (key: string, value: string) => Promise<true>,
-    getReFunction: () => Promise<string>,
+    getPinInfo: () => Promise<{ msgId: number, online: OnlineStream[] }>;
+    dbSetFunction: (key: string, value: string) => Promise<true>;
+    getReFunction: () => Promise<string>;
 }
 
 export class Telegram {
@@ -53,6 +54,18 @@ export class Telegram {
             const message= await botCallbacks.getReFunction();
             await this.sendMessageMd(chatId, message);
         });
+
+        this.bot.command(TG_CMD.PIN_UPDATE_FORCE,  async (ctx) => {
+            const chatId = ctx?.message?.chat?.id;
+            if (!chatId || chatId !== config.tg.adminId) {
+                logger.debug(`pinUpdateForce: skip message from chat -- ${chatId}`);
+                return;
+            }
+
+            const data = await botCallbacks.getPinInfo();
+            await this.updatePin(config.tg.chatId, data.msgId, TgMsg.getShortStatus(data.online));
+        });
+
     }
 
     public async sendNotifications(chatId: number, notifications: Notification[]) {

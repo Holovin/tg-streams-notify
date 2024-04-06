@@ -23,6 +23,7 @@ export enum L_StreamState {
 export const TG_CMD = {
     PIN: 'get_pin',
     RECORDER: 'get_re',
+    PIN_UPDATE_FORCE: 'pin_force',
 }
 
 const platformInfo = {

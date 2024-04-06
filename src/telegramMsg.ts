@@ -106,7 +106,7 @@ export class TgMsg {
 
         return `${extraPreTitle !== '' ? extraPreTitle + ' ' : ''}${streamName} ${lng[1]} live ` +
             `${duration}${lng[0]}\n` +
-            `*${this.escMd(stream.title)}${streamGame}*\n\n` +
+            `*${this.escMd(stream.title)}*${streamGame}\n\n` +
             streamUrl;
     }
 

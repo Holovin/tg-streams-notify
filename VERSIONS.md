@@ -17,6 +17,9 @@
 - 9-10/fix: fix typo in tgmsg
 - 11/fix: no escape-md in pin method for stream title
 - 12-14/feat: pin force update command
+- 15/DX: remove winston-telegram
+- 15/DX: bot catch handler
+- 16/fix: escape fixes
 
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)

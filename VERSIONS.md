@@ -16,7 +16,7 @@
 - 8/fix: fix empty recorder config error
 - 9+10/fix: fix typo in tgmsg
 - 11/fix: no escape-md in pin method for stream title
-- 12/feat: pin force update command
+- 12+13/feat: pin force update command
 
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)

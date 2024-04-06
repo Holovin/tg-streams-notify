@@ -1,6 +1,6 @@
 {
   "name": "sqd_streamnotify",
-  "version": "0.16.14",
+  "version": "0.16.15",
   "description": "Twitch streams notifications",
   "exports": "./index.js",
   "type": "module",
@@ -37,7 +37,6 @@
     "keyv": "^4.5.4",
     "nconf": "^0.12.1",
     "node-twitch": "^0.5.0",
-    "winston": "^3.13.0",
-    "winston-telegram": "^2.7.0"
+    "winston": "^3.13.0"
   }
 }

@@ -66,24 +66,32 @@ export class TgMsg {
             + `\n\n${this.formatRecordingsToList(activeRecordings)}`;
     }
 
-    public static recorderInfo(state: L_RecordState, url: string, isOk = false) {
+    public static recorderInfo(state: L_RecordState, url: string, isOk = false): string {
         const lng = ({
             [L_RecordState.START]: ['💁', 'Start'],
             [L_RecordState.END]:   ['💁', 'End'],
         })[state];
 
-        return `${lng[0]} *${lng[1]} recording* ` + this.escMd(`-- ${url}`)
-            + (state === L_RecordState.END)
-                ? (isOk ? 'Stopped ok' : 'Not stopped!')
-                : ''
+        let extra = '';
+        if (state === L_RecordState.END) {
+            extra += '\n';
+            extra += isOk ? 'Stopped ok' : 'Not stopped';
+        }
+
+        return `${lng[0]} *${lng[1]} recording* ${this.escMd(`-- ${url}`)}${extra}`;
+    }
+
+    public static errorMessageStack(message: string, stack: string): string {
+        return `🧨 *${this.escMd(message ?? 'Error')}*\n` +
+            '```' + this.escMd(stack + '') + '```'
         ;
     }
 
-    public static getChannelDisplayName(channels: Channels, loginNormalized: string, login: string) {
+    public static getChannelDisplayName(channels: Channels, loginNormalized: string, login: string): string {
         return channels[loginNormalized]?.displayName ?? login;
     }
 
-    public static streamInfo(stream: OnlineStream, state: L_StreamState, extraPreTitle = '') {
+    public static streamInfo(stream: OnlineStream, state: L_StreamState, extraPreTitle = ''): string {
         const lng = ({
             [L_StreamState.START]: [platformInfo[stream.platform].emoji, 'is'],
             [L_StreamState.END]:   ['⚪️', 'was'],
@@ -94,10 +102,11 @@ export class TgMsg {
             config.streamers.twitch.streamers, stream.loginNormalized, stream.login);
         const streamUrl = this.getStreamMarkdownLink(
             stream, `[Open stream on ${platformInfo[stream.platform].label} ↗]`);
+        const streamGame = stream.game ? ` · ${this.escMd(stream.game)}` : '';
 
         return `${extraPreTitle !== '' ? extraPreTitle + ' ' : ''}${streamName} ${lng[1]} live ` +
             `${duration}${lng[0]}\n` +
-            `*${this.escMd(stream.title)}* · ${this.escMd(stream.game)}\n\n` +
+            `*${this.escMd(stream.title)}${streamGame}*\n\n` +
             streamUrl;
     }
 

@@ -4,7 +4,7 @@ import { EventType, Notification, OnlineStream } from './types.js';
 import { logger } from './logger.js';
 import { Database } from './db.js';
 import { Twitch } from './twitch.js';
-import { Telegram } from './telegram.js';
+import { TelegramBot } from './telegramBot.js';
 import { config } from './config.js';
 import { getStreamLink, postProcess } from './streamProcessor.js';
 import { Recorder } from './recorder.js';
@@ -28,14 +28,14 @@ class App {
     private state: OnlineStream[] = [];
     private db: Database;
     private twitch: Twitch;
-    private bot: Telegram;
+    private bot: TelegramBot;
     private recorder: Recorder;
     private lastRecorderNotification: Date = new Date(0);
 
     public constructor() {
         this.db = new Database();
         this.twitch = new Twitch(config.twitch.id, config.twitch.secret);
-        this.bot = new Telegram(config.tg.token);
+        this.bot = new TelegramBot(config.tg.token);
         this.recorder = new Recorder();
     }
 
@@ -59,8 +59,8 @@ class App {
             logger.debug( `tick: stateProcess, (${new Date()}), state: ${this.state.length} `);
             this.state = await this.stateHandler(this.state, online);
 
-            logger.debug( `tick: checkBansTwitch, (${new Date()}), state: ${this.state.length}`);
-            await this.taskCheckBansTwitch();
+            // logger.debug( `tick: checkBansTwitch, (${new Date()}), state: ${this.state.length}`);
+            // await this.taskCheckBansTwitch();
 
             if (this.recorder.getActiveRecordings().length > 0) {
                 logger.debug( `tick: checkDiskState, (${new Date()})`);

@@ -18,7 +18,7 @@ export interface TgBotCallbacks {
     getReFunction: () => Promise<string>;
 }
 
-export class Telegram {
+export class TelegramBot {
     private bot = new Bot(config.tg.token);
 
     constructor(token: string) {
@@ -64,6 +64,13 @@ export class Telegram {
 
             const data = await botCallbacks.getPinInfo();
             await this.updatePin(config.tg.chatId, data.msgId, TgMsg.getShortStatus(data.online));
+        });
+
+        this.bot.catch((error) => {
+            logger.error(JSON.stringify(error));
+
+            const message = TgMsg.errorMessageStack(error.message, error.stack ?? 'No error stack');
+            this.bot.api.sendMessage(config.tg.adminId, message, { parse_mode: 'MarkdownV2' });
         });
 
     }

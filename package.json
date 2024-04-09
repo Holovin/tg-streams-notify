@@ -1,6 +1,6 @@
 {
   "name": "sqd_streamnotify",
-  "version": "0.16.16",
+  "version": "0.17.0",
   "description": "Twitch streams notifications",
   "exports": "./index.js",
   "type": "module",
@@ -29,6 +29,8 @@
   },
   "dependencies": {
     "@keyv/sqlite": "^3.6.7",
+    "@twurple/api": "^7.1.0",
+    "@twurple/auth": "^7.1.0",
     "axios": "^1.6.8",
     "date-fns": "^3.6.0",
     "execa": "^8.0.1",
@@ -36,7 +38,6 @@
     "grammy": "^1.21.1",
     "keyv": "^4.5.4",
     "nconf": "^0.12.1",
-    "node-twitch": "^0.5.0",
     "winston": "^3.13.0"
   }
 }

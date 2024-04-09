@@ -1,28 +1,29 @@
 import { intervalToDuration } from 'date-fns/intervalToDuration';
 import { OnlineStream, PlatformType, UserInfo } from './types.js';
 import { logger } from './logger.js';
-import { TwitchApi } from 'node-twitch';
+import { ApiClient, HelixStream } from '@twurple/api';
+import { AppTokenAuthProvider } from '@twurple/auth';
+import { rawDataSymbol } from '@twurple/common';
 
 
 export class Twitch {
-    private tv: TwitchApi;
+    private readonly auth: AppTokenAuthProvider;
+    private readonly api: ApiClient;
 
     public constructor(id: string, secret: string) {
-        this.tv = new TwitchApi({
-            client_id: id,
-            client_secret: secret,
-        });
+        this.auth = new AppTokenAuthProvider(id, secret);
+        this.api = new ApiClient({ authProvider: this.auth });
 
         logger.info(`[TwitchAPI] id = [...${id.slice(-5)}], secret = [...${secret.slice(-5)}]`);
     }
 
-    public async pullTwitchStreamers(channelNames): Promise<OnlineStream[]> {
+    public async pullTwitchStreamers(channelNames: string[]): Promise<OnlineStream[]> {
         const online: OnlineStream[] = [];
-        let response;
+        let helixStreams: HelixStream[];
 
         try {
-            response = await this.tv.getStreams({ channels: channelNames });
-            logger.debug(`pullTwitchStreamers: response: ${JSON.stringify(response)}`);
+            helixStreams = await this.api.streams.getStreamsByUserNames(channelNames);
+            logger.debug(`pullTwitchStreamers: response: ${(helixStreams.map(stream => JSON.stringify(stream[rawDataSymbol])))}`);
 
         } catch (e) {
             if (e instanceof Error) {
@@ -35,17 +36,17 @@ export class Twitch {
             return [];
         }
 
-        if (!response || !response.data) {
+        if (!helixStreams) {
             logger.warn(`pullTwitchStreamers: empty response??`);
             return [];
         }
 
-        response.data.forEach(streamInfo => {
-            if (streamInfo.type !== 'live') {
+        helixStreams.forEach(helixStream => {
+            if (helixStream.type !== 'live') {
                 return;
             }
 
-            const startedAt = streamInfo.started_at;
+            const startedAt = helixStream.startDate;
             const duration = intervalToDuration({
                 start: new Date(startedAt),
                 end: new Date(),
@@ -60,10 +61,10 @@ export class Twitch {
             }
 
             const stream: OnlineStream = {
-                title: streamInfo.title ?? '',
-                login: streamInfo.user_name ?? '',
-                loginNormalized: Twitch.normalizeStreamerLogin(streamInfo.user_name) ?? '',
-                game: streamInfo.game_name ?? '',
+                title: helixStream.title ?? '',
+                login: helixStream.userName ?? '',
+                loginNormalized: Twitch.normalizeStreamerLogin(helixStream.userName) ?? '',
+                game: helixStream.gameName ?? '',
                 duration: `${duration.hours.toString().padStart(2, '0')}:${duration.minutes.toString().padStart(2, '0')}`,
                 hours: duration.hours ?? -1,
                 platform: PlatformType.TWITCH,
@@ -77,12 +78,14 @@ export class Twitch {
         return online;
     }
 
-    public async pullTwitchAliveUsers(channelNames): Promise<UserInfo[]|null> {
+    public async pullTwitchAliveUsers(channelNames: string[]): Promise<UserInfo[]|null> {
         try {
-            const response = await this.tv.getUsers(channelNames);
-            const channelsAlive = response.data.map(channel => ({
-                name: Twitch.normalizeStreamerLogin(channel.login),
-                displayName: channel.display_name,
+            const users = await this.api.users.getUsersByNames(channelNames);
+            logger.debug(`pullTwitchAliveUsers: ${users.map(user => JSON.stringify(user[rawDataSymbol]))}`);
+
+            const channelsAlive = users.map(user => ({
+                name: Twitch.normalizeStreamerLogin(user.name),
+                displayName: user.displayName,
             }));
 
             logger.debug(`pullTwitchAliveUsers: ${JSON.stringify(channelsAlive)}`);

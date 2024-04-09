@@ -1,4 +1,8 @@
 ## Version history
+##### v17
+- tech: moved to twurple twitch lib api
+- feat: support displayName & login from api
+
 ##### v16
 - feat: recorder (beta & unstable)
 - fix: crash when `/get_pin` called (missed this context)

@@ -2,6 +2,7 @@
 ##### v17
 - tech: moved to twurple twitch lib api
 - feat: support displayName & login from api
+- .1/fix: displayName for all stream alerts
 
 ##### v16
 - feat: recorder (beta & unstable)
@@ -15,15 +16,15 @@
 - c/fix: remove ended streams properly
 - e/DX: normalize stream login property for prevent future comparison errors
 - e/fix: auto-message frequency fixes
-- 7/fix: fix stop command, add exit code output
-- 8/DX: move all text of messages to functions for prevent md errors
-- 8/fix: fix empty recorder config error
-- 9-10/fix: fix typo in tgmsg
-- 11/fix: no escape-md in pin method for stream title
-- 12-14/feat: pin force update command
-- 15/DX: remove winston-telegram
-- 15/DX: bot catch handler
-- 16/fix: escape fixes
+- .7/fix: fix stop command, add exit code output
+- .8/DX: move all text of messages to functions for prevent md errors
+- .8/fix: fix empty recorder config error
+- .9..10/fix: fix typo in tgmsg
+- .11/fix: no escape-md in pin method for stream title
+- .12..14/feat: pin force update command
+- .15/DX: remove winston-telegram
+- .15/DX: bot catch handler
+- .16/fix: escape fixes
 
 ##### v15
 - feat: remove kick support (there is no official API, unofficial too much buggy)

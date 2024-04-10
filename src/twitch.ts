@@ -61,7 +61,8 @@ export class Twitch {
             }
 
             const stream: OnlineStream = {
-                title: helixStream.title ?? '',
+                title: helixStream.title ?? helixStream,
+                displayName: helixStream.userDisplayName,
                 login: helixStream.userName ?? '',
                 loginNormalized: Twitch.normalizeStreamerLogin(helixStream.userName) ?? '',
                 game: helixStream.gameName ?? '',

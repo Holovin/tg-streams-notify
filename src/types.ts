@@ -17,6 +17,7 @@ export interface OnlineStream {
     title: string;
     login: string;
     loginNormalized: string;
+    displayName: string;
     game: string;
     duration: string;
     hours: number;

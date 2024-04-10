@@ -1,6 +1,6 @@
 {
   "name": "sqd_streamnotify",
-  "version": "0.17.0",
+  "version": "0.17.1",
   "description": "Twitch streams notifications",
   "exports": "./index.js",
   "type": "module",

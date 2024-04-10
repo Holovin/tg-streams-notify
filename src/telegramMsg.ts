@@ -87,8 +87,8 @@ export class TgMsg {
         ;
     }
 
-    public static getChannelDisplayName(channels: Channels, loginNormalized: string, login: string): string {
-        return channels[loginNormalized]?.displayName ?? login;
+    public static getChannelDisplayName(channels: Channels, loginNormalized: string, displayName: string): string {
+        return channels[loginNormalized]?.displayName ?? displayName;
     }
 
     public static streamInfo(stream: OnlineStream, state: L_StreamState, extraPreTitle = ''): string {
@@ -98,8 +98,11 @@ export class TgMsg {
         })[state];
 
         const duration = stream.duration.startsWith('00:0') ? '' : `for _${stream.duration}_ `;
-        const streamName = this.getChannelDisplayName(
-            config.streamers.twitch.streamers, stream.loginNormalized, stream.login);
+        const streamName = this.escMd(
+            this.getChannelDisplayName(
+                config.streamers.twitch.streamers, stream.loginNormalized, stream.displayName
+            )
+        );
         const streamUrl = this.getStreamMarkdownLink(
             stream, `[Open stream on ${platformInfo[stream.platform].label} ↗]`);
         const streamGame = stream.game ? ` · ${this.escMd(stream.game)}` : '';

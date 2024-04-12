@@ -1,4 +1,4 @@
-import { GrammyError } from 'grammy';
+import { Context, GrammyError, NextFunction } from 'grammy';
 import { Bot } from 'grammy';
 import { Notification, OnlineStream } from './types.js';
 import { config } from './config.js';
@@ -7,8 +7,8 @@ import { sleep } from './helpers.js';
 import { Database } from './db.js';
 import { TG_CMD, TgMsg } from './telegramMsg.js';
 import {
-    PIN_MESSAGE_UPDATE_FIRST_DELAY_SECONDS,
-    SEND_MESSAGE_DELAY_AFTER_SECONDS
+    PIN_MESSAGE_UPDATE_FIRST_DELAY_SECONDS, PIN_MESSAGE_UPDATE_FORCE_DELAY_SECONDS,
+    SEND_MESSAGE_DELAY_AFTER_SECONDS,
 } from './const.js';
 
 
@@ -28,6 +28,8 @@ export class TelegramBot {
     }
 
     public async initBot(botCallbacks: TgBotCallbacks) {
+        this.bot.use(this.checkAccess.bind(this));
+
         this.bot.command(TG_CMD.PIN, async ctx => {
             const chatId = ctx?.message?.chat?.id;
             if (!chatId || chatId !== config.tg.adminId) {
@@ -64,6 +66,8 @@ export class TelegramBot {
 
             const data = await botCallbacks.getPinInfo();
             await this.updatePin(config.tg.chatId, data.msgId, TgMsg.getShortStatus(data.online));
+            await sleep(PIN_MESSAGE_UPDATE_FORCE_DELAY_SECONDS);
+            await this.sendMessageMd(config.tg.adminId, TgMsg.pinMsgForceUpdate());
         });
 
         this.bot.catch((error) => {
@@ -128,6 +132,27 @@ export class TelegramBot {
 
     public async start() {
         return this.bot.start();
+    }
+
+    private async checkAccess(ctx: Context, next: NextFunction): Promise<void> {
+        if (ctx.update.my_chat_member) {
+            if (ctx.update.my_chat_member.from.id !== config.tg.adminId) {
+                logger.info(`mid: skip message from --  ${ctx.update.update_id} -- ${ctx.update.my_chat_member.from.id}`);
+                await this.sendMessageMd(config.tg.adminId, TgMsg.errorAccess(ctx.update.my_chat_member.from.id, JSON.stringify(ctx.update)));
+                return;
+            }
+
+            return next();
+        }
+
+        const chatId = ctx.message?.chat?.id;
+        if (!chatId || (chatId !== config.tg.chatId && chatId !== config.tg.adminId)) {
+            logger.info(`mid: skip message from --  ${ctx.update.update_id} -- ${chatId}`);
+            await this.sendMessageMd(config.tg.adminId, TgMsg.errorAccess(chatId ?? 0, JSON.stringify(ctx.update)));
+            return;
+        }
+
+        return next();
     }
 }
 

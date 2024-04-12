@@ -3,6 +3,8 @@
 - tech: moved to twurple twitch lib api
 - feat: support displayName & login from api
 - .1/fix: displayName for all stream alerts
+- .2/feat: send message after pin force update
+- .2/feat: alerts when unauthorized user tried to use bot
 
 ##### v16
 - feat: recorder (beta & unstable)

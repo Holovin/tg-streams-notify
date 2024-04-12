@@ -87,6 +87,15 @@ export class TgMsg {
         ;
     }
 
+    public static errorAccess(chatId: number, updateJSON: string) {
+        return this.escMd(`Access warning! From ${chatId}, dump: ${updateJSON}`)
+
+    }
+
+    public static pinMsgForceUpdate() {
+        return this.escMd(`Pin message updated!`);
+    }
+
     public static getChannelDisplayName(channels: Channels, loginNormalized: string, displayName: string): string {
         return channels[loginNormalized]?.displayName ?? displayName;
     }

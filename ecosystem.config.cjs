@@ -1,12 +1,13 @@
 module.exports = {
     apps : [{
-        name: 'sqd_streamnotify',
+        name: 'tg-streams-notify',
 
         script: 'npm',
         args: 'run start',
 
         instances: 1,
         autorestart: true,
+        exp_backoff_restart_delay: 1000,
         watch: false,
         max_memory_restart: '4G',
 

@@ -1,6 +1,6 @@
 {
-  "name": "sqd_streamnotify",
-  "version": "0.17.2",
+  "name": "tg-streams-notify",
+  "version": "0.17.3",
   "description": "Twitch streams notifications",
   "exports": "./index.js",
   "type": "module",
@@ -11,14 +11,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Holovin/sqd_streamnotify.git"
+    "url": "git+https://github.com/Holovin/tg-streams-notify.git"
   },
   "author": "Alex Holovin",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/Holovin/sqd_streamnotify/issues"
+    "url": "https://github.com/Holovin/tg-streams-notify/issues"
   },
-  "homepage": "https://github.com/Holovin/sqd_streamnotify#readme",
+  "homepage": "https://github.com/Holovin/tg-streams-notify#readme",
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/nconf": "^0.10.6",

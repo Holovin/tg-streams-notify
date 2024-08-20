@@ -1,5 +1,5 @@
-# SQD StreamNotify
-Telegram bot that can send notifications of current twitch streams to telegram chat. 
+# TG Streams Notify
+Telegram bot that can send notifications of current Twitch streams to telegram chat. 
 
 ## Setup & running
 1. Tested on Node.js v18-20
